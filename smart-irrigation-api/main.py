@@ -39,7 +39,6 @@ async def health():
         "service": settings.PROJECT_NAME
     }
 
-
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
