@@ -57,8 +57,8 @@ Once the server is running, you can access:
 
 ## Available Endpoints
 
-- `GET /` - Root endpoint, returns welcome message
-- `GET /health` - Health check endpoint
+- `GET /` - Root endpoint, returns welcome message.
+- `GET /health` - Health check endpoint.
 
 ## Configuration
 
