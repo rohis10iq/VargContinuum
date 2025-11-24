@@ -14,10 +14,13 @@ def reset_db():
     fake_users_db.clear()
 
 
-client = TestClient(app)
+@pytest.fixture
+def client():
+    """Create a test client for the FastAPI app."""
+    return TestClient(app)
 
 
-def test_health_endpoint():
+def test_health_endpoint(client):
     """Test /health endpoint returns 200 and status: healthy."""
     response = client.get("/health")
     
@@ -25,7 +28,7 @@ def test_health_endpoint():
     assert response.json()["status"] == "healthy"
 
 
-def test_register_new_user():
+def test_register_new_user(client):
     """Test registering a new user returns status 201 and includes access_token."""
     user_data = {
         "email": "test@example.com",
@@ -40,7 +43,7 @@ def test_register_new_user():
     assert response.json()["token_type"] == "bearer"
 
 
-def test_duplicate_registration():
+def test_duplicate_registration(client):
     """Test duplicate registration returns 400."""
     user_data = {
         "email": "duplicate@example.com",
@@ -58,7 +61,7 @@ def test_duplicate_registration():
     assert "already registered" in response2.json()["detail"].lower()
 
 
-def test_successful_login():
+def test_successful_login(client):
     """Test successful login returns access_token."""
     # First, register a user
     user_data = {
@@ -80,7 +83,7 @@ def test_successful_login():
     assert response.json()["token_type"] == "bearer"
 
 
-def test_login_wrong_password():
+def test_login_wrong_password(client):
     """Test login with wrong password returns 401."""
     # First, register a user
     user_data = {
