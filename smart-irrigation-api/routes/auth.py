@@ -1,62 +1,50 @@
-"""Authentication routes for user registration and login (Deliverable Mode)."""
+"""
+Authentication utilities for password hashing and JWT creation.
+This version is stable and compatible with Python 3.12
+"""
 
-from fastapi import APIRouter, HTTPException, status
-from models.user import UserCreate, UserLogin
-from utils.auth import hash_password, verify_password, create_access_token
+from passlib.context import CryptContext
+from jose import jwt
+from datetime import datetime, timedelta
 
-router = APIRouter(prefix="/api/auth", tags=["authentication"])
+# Development secrets (change in production)
+SECRET_KEY = "dev-secret-key-change-in-production"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_HOURS = 24
 
-# In-memory "fake database"
-fake_users_db = {}
+# Password hashing context
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12
+)
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register(user: UserCreate):
-    if user.email in fake_users_db:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
+def hash_password(password: str) -> str:
+    """Hash a plain password safely."""
+    # bcrypt limit safety
+    if len(password.encode("utf-8")) > 72:
+        password = password[:72]
 
-    # Hash password and store
-    fake_users_db[user.email] = {
-        "password": hash_password(user.password),
-        "role": user.role
-    }
+    return pwd_context.hash(password)
 
-    # Generate token
-    token = create_access_token(
-        data={"sub": user.email, "role": user.role}
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against a hash."""
+    if len(plain_password.encode("utf-8")) > 72:
+        plain_password = plain_password[:72]
+
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
+    """Create a JWT token with expiry."""
+    to_encode = data.copy()
+
+    expire = datetime.utcnow() + (
+        expires_delta or timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     )
 
-    return {
-        "access_token": token,
-        "token_type": "bearer"
-    }
+    to_encode.update({"exp": expire})
 
-
-@router.post("/login")
-async def login(user: UserLogin):
-    db_user = fake_users_db.get(user.email)
-
-    if not db_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
-
-    if not verify_password(user.password, db_user["password"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
-
-    # Generate token
-    token = create_access_token(
-        data={"sub": user.email, "role": db_user["role"]}
-    )
-
-    return {
-        "access_token": token,
-        "token_type": "bearer"
-    }
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
