@@ -28,10 +28,10 @@ def get_db_connection():
             password=settings.DATABASE_PASSWORD
         )
         return conn
-    except psycopg2.Error as e:
+    except psycopg2.Error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Database connection failed: {str(e)}"
+            detail="Database service is currently unavailable"
         )
 
 
@@ -39,7 +39,13 @@ def init_users_table():
     """Initialize users table if it doesn't exist."""
     conn = None
     try:
-        conn = get_db_connection()
+        conn = psycopg2.connect(
+            host=settings.DATABASE_HOST,
+            port=settings.DATABASE_PORT,
+            database=settings.DATABASE_NAME,
+            user=settings.DATABASE_USER,
+            password=settings.DATABASE_PASSWORD
+        )
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -66,8 +72,8 @@ def init_users_table():
 # Initialize table on module import
 try:
     init_users_table()
-except Exception:
-    # Silently fail if database is not available during import
+except psycopg2.Error:
+    # Database not available during startup - will fail on first request
     pass
 
 
@@ -126,12 +132,12 @@ async def register(user: UserCreate):
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         if conn:
             conn.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Registration failed: {str(e)}"
+            detail="Registration failed. Please try again later."
         )
     finally:
         if conn:
@@ -189,10 +195,10 @@ async def login(user: UserLogin):
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Login failed: {str(e)}"
+            detail="Login failed. Please try again later."
         )
     finally:
         if conn:
