@@ -1,5 +1,6 @@
 """Configuration settings for smart irrigation API."""
 
+import os
 from typing import List
 
 
@@ -20,6 +21,18 @@ class Settings:
     # Server settings
     HOST: str = "0.0.0.0"
     PORT: int = 8000
+    
+    # Database settings
+    DATABASE_HOST: str = os.getenv("DATABASE_HOST", "localhost")
+    DATABASE_PORT: int = int(os.getenv("DATABASE_PORT", "5432"))
+    DATABASE_NAME: str = os.getenv("DATABASE_NAME", "smart_irrigation")
+    DATABASE_USER: str = os.getenv("DATABASE_USER", "postgres")
+    DATABASE_PASSWORD: str = os.getenv("DATABASE_PASSWORD", "postgres")
+    
+    # JWT settings
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here-change-in-production")
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_HOURS: int = 24
 
 
 settings = Settings()
