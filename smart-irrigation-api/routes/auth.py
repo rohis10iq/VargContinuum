@@ -60,10 +60,6 @@ def init_users_table():
         
         conn.commit()
         cursor.close()
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        raise e
     finally:
         if conn:
             conn.close()
@@ -72,7 +68,7 @@ def init_users_table():
 # Initialize table on module import
 try:
     init_users_table()
-except psycopg2.Error:
+except (psycopg2.Error, Exception):
     # Database not available during startup - will fail on first request
     pass
 
