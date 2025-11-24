@@ -10,8 +10,6 @@ from routes.auth import fake_users_db
 def reset_db():
     """Reset the in-memory database before each test."""
     fake_users_db.clear()
-    yield
-    fake_users_db.clear()
 
 
 @pytest.fixture
