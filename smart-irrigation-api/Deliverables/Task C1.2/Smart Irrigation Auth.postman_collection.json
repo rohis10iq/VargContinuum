@@ -1,0 +1,71 @@
+{
+	"info": {
+		"_postman_id": "9846ef65-afb3-4a05-972b-412b76fd32cf",
+		"name": "Smart Irrigation Auth",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "50306187",
+		"_collection_link": "https://rohailtheiqbal-5112479.postman.co/workspace/Rohail-Iqbal's-Workspace~38c635ac-be90-4dcc-8b81-8b4c8565ceb5/collection/50306187-9846ef65-afb3-4a05-972b-412b76fd32cf?action=share&source=collection_link&creator=50306187"
+	},
+	"item": [
+		{
+			"name": "Register User",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"postmanuser@example.com\",\n  \"password\": \"test1234\",\n  \"role\": \"farmer\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/auth/register\n",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"auth",
+						"register\n"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Login User",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"postmanuser@example.com\",\n  \"password\": \"test1234\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/auth/login\n",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"auth",
+						"login\n"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

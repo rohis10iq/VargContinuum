@@ -1,67 +1,68 @@
-from fastapi import APIRouter, HTTPException
-from models.user import UserCreate, UserLogin, Token
+"""Authentication routes (Mock DB mode for deliverables)."""
+
+from fastapi import APIRouter, HTTPException, status
+
+from models.user import UserCreate, UserLogin
 from utils.auth import hash_password, verify_password, create_access_token
-import psycopg2
 
-router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+# ✅ Router required by main.py
+router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
-def get_db_connection():
-    return psycopg2.connect(
-        host="localhost",
-        database="irrigation_db",
-        user="irrigation_user",
-        password="secure_pass"
-    )
+# In-memory fake database
+fake_users_db = {}
 
-@router.post("/register", response_model=Token)
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate):
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    """Register a new user."""
+    if user.email in fake_users_db:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
 
-    # Check if email already exists
-    cursor.execute("SELECT id FROM users WHERE email = %s", (user.email,))
-    if cursor.fetchone():
-        cursor.close()
-        conn.close()
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    # Insert new user
-    hashed = hash_password(user.password)
-    cursor.execute(
-        "INSERT INTO users (email, password_hash, role) VALUES (%s, %s, %s) RETURNING id",
-        (user.email, hashed, user.role)
-    )
-    user_id = cursor.fetchone()[0]
-    conn.commit()
+    # Store hashed password
+    fake_users_db[user.email] = {
+        "password": hash_password(user.password),
+        "role": user.role
+    }
 
     # Generate JWT token
-    token = create_access_token(data={"sub": user.email, "role": user.role})
+    token = create_access_token({
+        "sub": user.email,
+        "role": user.role
+    })
 
-    cursor.close()
-    conn.close()
-    return {"access_token": token, "token_type": "bearer"}
+    return {
+        "access_token": token,
+        "token_type": "bearer"
+    }
 
 
-@router.post("/login", response_model=Token)
-async def login(credentials: UserLogin):
-    conn = get_db_connection()
-    cursor = conn.cursor()
+@router.post("/login")
+async def login(user: UserLogin):
+    """Login an existing user."""
+    db_user = fake_users_db.get(user.email)
 
-    cursor.execute(
-        "SELECT password_hash, role FROM users WHERE email = %s",
-        (credentials.email,)
-    )
-    result = cursor.fetchone()
+    if not db_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password"
+        )
 
-    # If no user or password mismatch
-    if not result or not verify_password(credentials.password, result[0]):
-        cursor.close()
-        conn.close()
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not verify_password(user.password, db_user["password"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password"
+        )
 
-    token = create_access_token(data={"sub": credentials.email, "role": result[1]})
+    # Generate JWT token
+    token = create_access_token({
+        "sub": user.email,
+        "role": db_user["role"]
+    })
 
-    cursor.close()
-    conn.close()
-
-    return {"access_token": token, "token_type": "bearer"}
+    return {
+        "access_token": token,
+        "token_type": "bearer"
+    }
