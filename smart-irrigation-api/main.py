@@ -12,9 +12,6 @@ app = FastAPI(
     version=settings.VERSION,
 )
 
-from routes import auth
-app.include_router(auth.router)
-
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -25,7 +22,9 @@ app.add_middleware(
 )
 
 # Include routers
+from routes import auth, sensors
 app.include_router(auth.router)
+app.include_router(sensors.router)
 
 
 @app.get("/")

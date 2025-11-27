@@ -1,0 +1,720 @@
+{
+	"info": {
+		"_postman_id": "sensor-api-collection-2025",
+		"name": "Smart Irrigation - Sensor API",
+		"description": "Postman collection for testing sensor data endpoints with InfluxDB integration.\n\n## Task B2.1: Sensor Data API Endpoints\n\n### Base URL\n- Local: `http://localhost:8000`\n\n### Endpoints Tested\n1. GET /api/sensors - List all sensors\n2. GET /api/sensors/{id} - Get sensor details\n3. GET /api/sensors/{id}/latest - Get latest reading\n4. GET /api/sensors/{id}/history - Get historical readings\n5. GET /api/sensors/summary - Get sensors summary (cached)\n\n### Prerequisites\n- FastAPI server running on port 8000\n- InfluxDB running with sensor data\n- Environment variables configured\n\n### Test Date\nNovember 28, 2025",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "List All Sensors",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is JSON\", function () {",
+							"    pm.response.to.be.json;",
+							"});",
+							"",
+							"pm.test(\"Response has sensors array and total count\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('sensors');",
+							"    pm.expect(jsonData).to.have.property('total');",
+							"    pm.expect(jsonData.sensors).to.be.an('array');",
+							"});",
+							"",
+							"pm.test(\"Each sensor has required fields\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    if (jsonData.sensors.length > 0) {",
+							"        var sensor = jsonData.sensors[0];",
+							"        pm.expect(sensor).to.have.property('id');",
+							"        pm.expect(sensor).to.have.property('name');",
+							"        pm.expect(sensor).to.have.property('type');",
+							"        pm.expect(sensor).to.have.property('unit');",
+							"        pm.expect(sensor).to.have.property('status');",
+							"        ",
+							"        // Save first sensor ID for subsequent tests",
+							"        pm.environment.set(\"sensor_id\", sensor.id);",
+							"    }",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 500ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(500);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/sensors",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sensors"
+					]
+				},
+				"description": "Get a list of all sensors in the system with their basic information and latest readings."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Sensor Details",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is JSON\", function () {",
+							"    pm.response.to.be.json;",
+							"});",
+							"",
+							"pm.test(\"Response has all required sensor fields\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('id');",
+							"    pm.expect(jsonData).to.have.property('name');",
+							"    pm.expect(jsonData).to.have.property('type');",
+							"    pm.expect(jsonData).to.have.property('unit');",
+							"    pm.expect(jsonData).to.have.property('status');",
+							"});",
+							"",
+							"pm.test(\"Sensor ID matches requested ID\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    var requestedId = pm.environment.get(\"sensor_id\") || \"sensor_temp_001\";",
+							"    pm.expect(jsonData.id).to.eql(requestedId);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 500ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(500);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/sensors/{{sensor_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sensors",
+						"{{sensor_id}}"
+					]
+				},
+				"description": "Get detailed information for a specific sensor including its latest reading."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Sensor Details - Not Found",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 404\", function () {",
+							"    pm.response.to.have.status(404);",
+							"});",
+							"",
+							"pm.test(\"Response has error detail\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('detail');",
+							"    pm.expect(jsonData.detail).to.include('not found');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/sensors/invalid_sensor_xyz",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sensors",
+						"invalid_sensor_xyz"
+					]
+				},
+				"description": "Test error handling when sensor is not found."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Latest Reading",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is JSON\", function () {",
+							"    pm.response.to.be.json;",
+							"});",
+							"",
+							"pm.test(\"Response has reading fields\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('timestamp');",
+							"    pm.expect(jsonData).to.have.property('value');",
+							"    pm.expect(jsonData).to.have.property('unit');",
+							"});",
+							"",
+							"pm.test(\"Timestamp is in ISO 8601 format\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    var timestamp = jsonData.timestamp;",
+							"    pm.expect(timestamp).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/);",
+							"});",
+							"",
+							"pm.test(\"Value is a number\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.value).to.be.a('number');",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 500ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(500);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/sensors/{{sensor_id}}/latest",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sensors",
+						"{{sensor_id}}",
+						"latest"
+					]
+				},
+				"description": "Get the most recent reading from a specific sensor."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Historical Readings - Default",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is JSON\", function () {",
+							"    pm.response.to.be.json;",
+							"});",
+							"",
+							"pm.test(\"Response has required fields\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('sensor_id');",
+							"    pm.expect(jsonData).to.have.property('readings');",
+							"    pm.expect(jsonData).to.have.property('start_time');",
+							"    pm.expect(jsonData).to.have.property('end_time');",
+							"    pm.expect(jsonData).to.have.property('count');",
+							"});",
+							"",
+							"pm.test(\"Readings is an array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.readings).to.be.an('array');",
+							"});",
+							"",
+							"pm.test(\"Count matches readings array length\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.count).to.eql(jsonData.readings.length);",
+							"});",
+							"",
+							"pm.test(\"Each reading has required fields\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    if (jsonData.readings.length > 0) {",
+							"        var reading = jsonData.readings[0];",
+							"        pm.expect(reading).to.have.property('timestamp');",
+							"        pm.expect(reading).to.have.property('value');",
+							"        pm.expect(reading).to.have.property('unit');",
+							"    }",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 500ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(500);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/sensors/{{sensor_id}}/history",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sensors",
+						"{{sensor_id}}",
+						"history"
+					]
+				},
+				"description": "Get historical readings for the last 24 hours (default time range)."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Historical Readings - Custom Range",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has all fields\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('sensor_id');",
+							"    pm.expect(jsonData).to.have.property('readings');",
+							"    pm.expect(jsonData).to.have.property('start_time');",
+							"    pm.expect(jsonData).to.have.property('end_time');",
+							"    pm.expect(jsonData).to.have.property('count');",
+							"});",
+							"",
+							"pm.test(\"Limit parameter is respected\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.readings.length).to.be.at.most(100);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/sensors/{{sensor_id}}/history?start_time=2025-11-27T00:00:00Z&end_time=2025-11-28T23:59:59Z&limit=100",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sensors",
+						"{{sensor_id}}",
+						"history"
+					],
+					"query": [
+						{
+							"key": "start_time",
+							"value": "2025-11-27T00:00:00Z",
+							"description": "Start of time range"
+						},
+						{
+							"key": "end_time",
+							"value": "2025-11-28T23:59:59Z",
+							"description": "End of time range"
+						},
+						{
+							"key": "limit",
+							"value": "100",
+							"description": "Maximum number of readings"
+						}
+					]
+				},
+				"description": "Get historical readings with custom time range and limit."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Historical Readings - With Interval",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has readings array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('readings');",
+							"    pm.expect(jsonData.readings).to.be.an('array');",
+							"});",
+							"",
+							"pm.test(\"Aggregated data is returned\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    // With 1h interval over 24h, should get ~24 readings max",
+							"    pm.expect(jsonData.readings.length).to.be.at.most(24);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/sensors/{{sensor_id}}/history?interval=1h&limit=24",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sensors",
+						"{{sensor_id}}",
+						"history"
+					],
+					"query": [
+						{
+							"key": "interval",
+							"value": "1h",
+							"description": "Aggregation interval (hourly)"
+						},
+						{
+							"key": "limit",
+							"value": "24",
+							"description": "Maximum number of readings"
+						}
+					]
+				},
+				"description": "Get historical readings aggregated by hourly intervals."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Historical Readings - Invalid Time Range",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", function () {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"pm.test(\"Error message mentions time range\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('detail');",
+							"    pm.expect(jsonData.detail).to.include('before');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/sensors/{{sensor_id}}/history?start_time=2025-11-28T23:59:59Z&end_time=2025-11-27T00:00:00Z",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sensors",
+						"{{sensor_id}}",
+						"history"
+					],
+					"query": [
+						{
+							"key": "start_time",
+							"value": "2025-11-28T23:59:59Z",
+							"description": "Start after end (invalid)"
+						},
+						{
+							"key": "end_time",
+							"value": "2025-11-27T00:00:00Z",
+							"description": "End before start (invalid)"
+						}
+					]
+				},
+				"description": "Test error handling for invalid time range (start_time after end_time)."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Sensors Summary",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is JSON\", function () {",
+							"    pm.response.to.be.json;",
+							"});",
+							"",
+							"pm.test(\"Response has required summary fields\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('summaries');",
+							"    pm.expect(jsonData).to.have.property('total_sensors');",
+							"    pm.expect(jsonData).to.have.property('active_sensors');",
+							"    pm.expect(jsonData).to.have.property('timestamp');",
+							"});",
+							"",
+							"pm.test(\"Summaries is an array\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.summaries).to.be.an('array');",
+							"});",
+							"",
+							"pm.test(\"Each summary has statistics\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    if (jsonData.summaries.length > 0) {",
+							"        var summary = jsonData.summaries[0];",
+							"        pm.expect(summary).to.have.property('sensor_id');",
+							"        pm.expect(summary).to.have.property('name');",
+							"        pm.expect(summary).to.have.property('type');",
+							"        pm.expect(summary).to.have.property('current_value');",
+							"        pm.expect(summary).to.have.property('min_value');",
+							"        pm.expect(summary).to.have.property('max_value');",
+							"        pm.expect(summary).to.have.property('avg_value');",
+							"        pm.expect(summary).to.have.property('unit');",
+							"        pm.expect(summary).to.have.property('status');",
+							"    }",
+							"});",
+							"",
+							"pm.test(\"Total sensors equals summaries count\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.total_sensors).to.eql(jsonData.summaries.length);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 500ms (cached)\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(500);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/sensors/summary",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sensors",
+						"summary"
+					]
+				},
+				"description": "Get summary of all sensors with current, min, max, and average values. This endpoint is cached for 5 minutes."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Sensors Summary - Cache Test",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is very fast (from cache)\", function () {",
+							"    // Cached response should be much faster",
+							"    pm.expect(pm.response.responseTime).to.be.below(100);",
+							"});",
+							"",
+							"pm.test(\"Timestamp remains same as previous call\", function () {",
+							"    // If cache is working, timestamp should be the same as previous call",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('timestamp');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/sensors/summary",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sensors",
+						"summary"
+					]
+				},
+				"description": "Run this immediately after the previous summary request to verify caching is working (response time should be much faster)."
+			},
+			"response": []
+		},
+		{
+			"name": "Health Check",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Service is healthy\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.eql('healthy');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/health",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"health"
+					]
+				},
+				"description": "Health check endpoint to verify the API is running."
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "sensor_id",
+			"value": "sensor_temp_001",
+			"type": "string"
+		}
+	]
+}
