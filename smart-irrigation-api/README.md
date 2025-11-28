@@ -1,6 +1,6 @@
 # Smart Irrigation API
 
-A FastAPI-based REST API for smart irrigation management with JWT authentication.
+A FastAPI-based REST API for smart irrigation management with JWT authentication and InfluxDB time-series sensor data storage.
 
 ## Project Structure
 
@@ -8,15 +8,25 @@ A FastAPI-based REST API for smart irrigation management with JWT authentication
 smart-irrigation-api/
 ├── models/          # Data models
 │   ├── __init__.py
-│   └── user.py      # User authentication models
+│   ├── user.py      # User authentication models
+│   └── sensor.py    # Sensor data models
 ├── routes/          # API routes
 │   ├── __init__.py
-│   └── auth.py      # Authentication endpoints
+│   ├── auth.py      # Authentication endpoints
+│   └── sensors.py   # Sensor data endpoints
+├── services/        # Business logic layer
+│   ├── __init__.py
+│   └── influxdb_service.py  # InfluxDB integration
 ├── utils/           # Utility functions
 │   ├── __init__.py
 │   └── auth.py      # Password hashing and JWT utilities
+├── tests/           # Test suite
+│   ├── test_auth.py
+│   └── test_sensors.py
 ├── config.py        # Application configuration
 ├── main.py          # FastAPI application entry point
+├── test_influxdb.py # InfluxDB integration test
+├── INFLUXDB_SETUP.md  # InfluxDB setup guide
 └── requirements.txt # Python dependencies
 ```
 
@@ -47,7 +57,7 @@ pip install psycopg2-binary==2.9.9
 Create a `.env` file in the project root with the following variables:
 
 ```env
-# Database Configuration
+# Database Configuration (PostgreSQL - for user authentication)
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_NAME=smart_irrigation
@@ -56,9 +66,18 @@ DATABASE_PASSWORD=your_password
 
 # JWT Configuration
 SECRET_KEY=your-secret-key-here-change-in-production
+
+# InfluxDB Configuration (for sensor data)
+INFLUXDB_URL=http://localhost:8086
+INFLUXDB_TOKEN=your-influxdb-token-here
+INFLUXDB_ORG=smart-irrigation
+INFLUXDB_BUCKET=sensor-data
 ```
 
-**Important**: Change the `SECRET_KEY` to a secure random string in production.
+**Important**: 
+- Change the `SECRET_KEY` to a secure random string in production
+- Get your InfluxDB token from http://localhost:8086 (Data → API Tokens)
+- See [INFLUXDB_SETUP.md](INFLUXDB_SETUP.md) for detailed InfluxDB setup instructions
 
 ## Running the Server
 
@@ -80,8 +99,8 @@ Once the server is running, you can access:
 ## Available Endpoints
 
 ### General Endpoints
-- `GET /` - Root endpoint, returns welcome message.
-- `GET /health` - Health check endpoint.
+- `GET /` - Root endpoint, returns welcome message
+- `GET /health` - Health check endpoint
 
 ### Authentication Endpoints
 
@@ -124,6 +143,38 @@ Content-Type: application/json
 }
 ```
 
+### Sensor Data Endpoints
+
+#### Write Sensor Data
+```bash
+POST /api/sensors/write
+Content-Type: application/json
+
+{
+  "sensor_id": "soil_sensor_01",
+  "sensor_type": "soil_moisture",
+  "value": 45.5,
+  "location": "field_a"
+}
+```
+
+#### Get Historical Data
+```bash
+# 24-hour history (5-minute aggregation)
+GET /api/sensors/history/24h?sensor_id=soil_sensor_01
+
+# 7-day history (1-hour aggregation)
+GET /api/sensors/history/7d?sensor_type=soil_moisture
+
+# 30-day history (6-hour aggregation)
+GET /api/sensors/history/30d?sensor_id=soil_sensor_01
+
+# Custom aggregation
+GET /api/sensors/aggregate?start_time=2025-11-27T00:00:00Z&window=30m&function=max
+```
+
+**Supported aggregation functions**: `mean`, `max`, `min`, `sum`, `count`
+
 ## Configuration
 
 The application can be configured via `config.py` or environment variables:
@@ -160,6 +211,7 @@ The application can be configured via `config.py` or environment variables:
 - **email-validator**: Email validation for Pydantic
 - **sqlalchemy**: SQL toolkit and ORM
 - **psycopg2-binary**: PostgreSQL database adapter
+- **influxdb-client**: InfluxDB Python client for time-series data
 
 ## Authentication Features
 

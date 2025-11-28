@@ -1,0 +1,335 @@
+{
+    "info": {
+        "_postman_id": "smart-irrigation-sensors-2025",
+        "name": "Smart Irrigation - Sensor Data API",
+        "description": "API endpoints for writing and querying sensor data in InfluxDB",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Health Check",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:8000/health",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8000",
+                    "path": [
+                        "health"
+                    ]
+                },
+                "description": "Check if the API server is running"
+            }
+        },
+        {
+            "name": "List All Sensors",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:8000/api/sensors",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8000",
+                    "path": [
+                        "api",
+                        "sensors"
+                    ]
+                },
+                "description": "List all unique sensors"
+            }
+        },
+        {
+            "name": "Dashboard Summary",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:8000/api/sensors/summary",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8000",
+                    "path": [
+                        "api",
+                        "sensors",
+                        "summary"
+                    ]
+                },
+                "description": "Get latest reading for all sensors (cached)"
+            }
+        },
+        {
+            "name": "Get Sensor Details",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:8000/api/sensors/soil_moisture_01",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8000",
+                    "path": [
+                        "api",
+                        "sensors",
+                        "soil_moisture_01"
+                    ]
+                },
+                "description": "Get details for a specific sensor"
+            }
+        },
+        {
+            "name": "Get Sensor Latest Reading",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:8000/api/sensors/soil_moisture_01/latest",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8000",
+                    "path": [
+                        "api",
+                        "sensors",
+                        "soil_moisture_01",
+                        "latest"
+                    ]
+                },
+                "description": "Get most recent reading for a sensor"
+            }
+        },
+        {
+            "name": "Get Sensor History (24h)",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:8000/api/sensors/soil_moisture_01/history?period=24h",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8000",
+                    "path": [
+                        "api",
+                        "sensors",
+                        "soil_moisture_01",
+                        "history"
+                    ],
+                    "query": [
+                        {
+                            "key": "period",
+                            "value": "24h"
+                        }
+                    ]
+                },
+                "description": "Get sensor history by ID"
+            }
+        },
+        {
+            "name": "Write Sensor Data - Soil Moisture",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"sensor_id\": \"soil_moisture_01\",\n  \"sensor_type\": \"soil_moisture\",\n  \"value\": 45.5,\n  \"location\": \"field_a\"\n}"
+                },
+                "url": {
+                    "raw": "http://localhost:8000/api/sensors/write",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8000",
+                    "path": [
+                        "api",
+                        "sensors",
+                        "write"
+                    ]
+                },
+                "description": "Write soil moisture sensor reading to InfluxDB"
+            }
+        },
+        {
+            "name": "Write Sensor Data - Temperature",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"sensor_id\": \"temp_sensor_01\",\n  \"sensor_type\": \"temperature\",\n  \"value\": 25.3,\n  \"location\": \"greenhouse\"\n}"
+                },
+                "url": {
+                    "raw": "http://localhost:8000/api/sensors/write",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8000",
+                    "path": [
+                        "api",
+                        "sensors",
+                        "write"
+                    ]
+                },
+                "description": "Write temperature sensor reading to InfluxDB"
+            }
+        },
+        {
+            "name": "Write Sensor Data - Humidity",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"sensor_id\": \"humidity_sensor_01\",\n  \"sensor_type\": \"humidity\",\n  \"value\": 68.2,\n  \"location\": \"greenhouse\"\n}"
+                },
+                "url": {
+                    "raw": "http://localhost:8000/api/sensors/write",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8000",
+                    "path": [
+                        "api",
+                        "sensors",
+                        "write"
+                    ]
+                },
+                "description": "Write humidity sensor reading to InfluxDB"
+            }
+        },
+        {
+            "name": "Get 24h History - All Sensors",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:8000/api/sensors/history/24h",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8000",
+                    "path": [
+                        "api",
+                        "sensors",
+                        "history",
+                        "24h"
+                    ]
+                },
+                "description": "Get 24-hour history for all sensors with 5-minute aggregation"
+            }
+        },
+        {
+            "name": "Get 7d History - All Sensors",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:8000/api/sensors/history/7d",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8000",
+                    "path": [
+                        "api",
+                        "sensors",
+                        "history",
+                        "7d"
+                    ]
+                },
+                "description": "Get 7-day history for all sensors with 1-hour aggregation"
+            }
+        },
+        {
+            "name": "Get 30d History - All Sensors",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:8000/api/sensors/history/30d",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8000",
+                    "path": [
+                        "api",
+                        "sensors",
+                        "history",
+                        "30d"
+                    ]
+                },
+                "description": "Get 30-day history for all sensors with 6-hour aggregation"
+            }
+        },
+        {
+            "name": "Custom Aggregation - Mean (1 hour window)",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:8000/api/sensors/aggregate?start_time=2025-11-27T00:00:00Z&window=1h&function=mean",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "8000",
+                    "path": [
+                        "api",
+                        "sensors",
+                        "aggregate"
+                    ],
+                    "query": [
+                        {
+                            "key": "start_time",
+                            "value": "2025-11-27T00:00:00Z",
+                            "description": "ISO 8601 format"
+                        },
+                        {
+                            "key": "window",
+                            "value": "1h",
+                            "description": "Aggregation window (1m, 5m, 1h, 6h, 1d)"
+                        },
+                        {
+                            "key": "function",
+                            "value": "mean",
+                            "description": "mean, max, min, sum, count"
+                        }
+                    ]
+                },
+                "description": "Custom time range with mean aggregation"
+            }
+        }
+    ]
+}
