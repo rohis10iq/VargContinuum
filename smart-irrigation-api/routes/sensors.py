@@ -1,295 +1,311 @@
-"""Sensor endpoints for smart irrigation API."""
+"""Sensor data API routes."""
 
 from datetime import datetime, timedelta
-from typing import Optional
-from fastapi import APIRouter, HTTPException, Query, status
-from models.sensor import (
-    SensorList,
-    SensorDetail,
-    SensorReading,
-    SensorHistory,
-    SensorsSummaryResponse,
-    SensorSummary
-)
-from utils.influxdb_client import get_influxdb_manager
-from utils.cache import get_sensors_cache
+from typing import Optional, Dict, Any, List
+from fastapi import APIRouter, HTTPException, status, Query, Path
+
+from models.sensor import SensorReading, SensorDataResponse, SensorDataPoint
+from services.influxdb_service import influxdb_service
 
 
 router = APIRouter(prefix="/api/sensors", tags=["sensors"])
 
+# Simple in-memory cache for dashboard summary
+_summary_cache: Dict[str, Any] = {
+    "data": None,
+    "timestamp": None,
+    "ttl_seconds": 30  # Cache for 30 seconds
+}
 
-@router.get("", response_model=SensorList, summary="List all sensors")
+
+@router.get("", response_model=List[Dict[str, Any]])
 async def list_sensors():
-    """
-    Get a list of all sensors in the system.
+    """List all unique sensors."""
+    return influxdb_service.get_all_sensors()
+
+
+@router.get("/summary")
+async def get_dashboard_summary():
+    """Get latest reading for all sensors (cached for 30s)."""
+    now = datetime.utcnow()
     
-    Returns:
-        SensorList: List of all sensors with their basic information
+    # Check cache
+    if (_summary_cache["data"] and _summary_cache["timestamp"] and 
+        (now - _summary_cache["timestamp"]).total_seconds() < _summary_cache["ttl_seconds"]):
+        return _summary_cache["data"]
+        
+    # Fetch new data
+    data = influxdb_service.get_dashboard_summary()
+    
+    # Update cache
+    _summary_cache["data"] = data
+    _summary_cache["timestamp"] = now
+    
+    return data
+
+
+@router.get("/{sensor_id}/latest")
+async def get_sensor_latest_reading(sensor_id: str = Path(..., description="Sensor ID")):
+    """Get the most recent reading for a sensor."""
+    latest = influxdb_service.get_sensor_latest(sensor_id)
+    if not latest:
+        raise HTTPException(status_code=404, detail="Sensor not found")
+    return latest
+
+
+@router.get("/{sensor_id}/history", response_model=SensorDataResponse)
+async def get_sensor_history_by_id(
+    sensor_id: str = Path(..., description="Sensor ID"),
+    period: str = Query("24h", description="Time period (24h, 7d, 30d)")
+):
+    """Get historical data for a specific sensor."""
+    if period == "24h":
+        return await get_24h_history(sensor_id=sensor_id)
+    elif period == "7d":
+        return await get_7d_history(sensor_id=sensor_id)
+    elif period == "30d":
+        return await get_30d_history(sensor_id=sensor_id)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid period. Use 24h, 7d, or 30d")
+
+
+@router.get("/{sensor_id}")
+async def get_sensor_details(sensor_id: str = Path(..., description="Sensor ID")):
+    """Get latest details for a specific sensor."""
+    latest = influxdb_service.get_sensor_latest(sensor_id)
+    if not latest:
+        raise HTTPException(status_code=404, detail="Sensor not found")
+    return latest
+
+
+@router.post("/write", status_code=status.HTTP_201_CREATED)
+async def write_sensor_data(reading: SensorReading):
+    """
+    Write a sensor reading to InfluxDB.
+    
+    Example request:
+    ```json
+    {
+        "sensor_id": "soil_sensor_01",
+        "sensor_type": "soil_moisture",
+        "value": 45.5,
+        "location": "field_a",
+        "timestamp": "2025-11-28T10:00:00Z"
+    }
+    ```
     """
     try:
-        influx = get_influxdb_manager()
-        sensors_data = influx.get_all_sensors()
-        
-        sensors = []
-        for sensor_data in sensors_data:
-            # Get latest reading for each sensor
-            latest = influx.get_latest_reading(sensor_data["id"])
-            
-            sensor = SensorDetail(
-                id=sensor_data["id"],
-                name=sensor_data["name"],
-                type=sensor_data["type"],
-                location=sensor_data.get("location"),
-                unit=sensor_data["unit"],
-                status=sensor_data["status"],
-                last_reading=SensorReading(**latest) if latest else None
-            )
-            sensors.append(sensor)
-        
-        return SensorList(sensors=sensors, total=len(sensors))
-    
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error fetching sensors: {str(e)}"
-        )
-
-
-@router.get("/summary", response_model=SensorsSummaryResponse, summary="Get sensors summary (cached)")
-async def get_sensors_summary():
-    """
-    Get a summary of all sensors including current, min, max, and average values.
-    
-    This endpoint is cached to improve performance. The cache is refreshed based on
-    the configured TTL (default: 5 minutes).
-    
-    Returns:
-        SensorsSummaryResponse: Summary statistics for all sensors
-    """
-    try:
-        cache = get_sensors_cache()
-        cache_key = "sensors_summary"
-        
-        # Check cache first
-        cached_result = cache.get(cache_key)
-        if cached_result:
-            return cached_result
-        
-        # Cache miss - fetch from InfluxDB
-        influx = get_influxdb_manager()
-        sensors_data = influx.get_all_sensors()
-        
-        summaries = []
-        active_count = 0
-        
-        for sensor_data in sensors_data:
-            sensor_id = sensor_data["id"]
-            
-            # Get latest reading
-            latest = influx.get_latest_reading(sensor_id)
-            current_value = latest["value"] if latest else None
-            
-            # Get statistics (last 24 hours)
-            stats = influx.get_sensor_statistics(sensor_id)
-            
-            if sensor_data["status"] == "active":
-                active_count += 1
-            
-            summary = SensorSummary(
-                sensor_id=sensor_id,
-                name=sensor_data["name"],
-                type=sensor_data["type"],
-                current_value=current_value,
-                min_value=stats["min"] if stats else None,
-                max_value=stats["max"] if stats else None,
-                avg_value=stats["avg"] if stats else None,
-                unit=sensor_data["unit"],
-                status=sensor_data["status"]
-            )
-            summaries.append(summary)
-        
-        result = SensorsSummaryResponse(
-            summaries=summaries,
-            total_sensors=len(summaries),
-            active_sensors=active_count,
-            timestamp=datetime.utcnow()
+        success = influxdb_service.write_sensor_data(
+            sensor_id=reading.sensor_id,
+            sensor_type=reading.sensor_type,
+            value=reading.value,
+            location=reading.location,
+            timestamp=reading.timestamp
         )
         
-        # Store in cache
-        cache.set(cache_key, result)
-        
-        return result
-    
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error generating sensors summary: {str(e)}"
-        )
-
-
-@router.get("/{sensor_id}", response_model=SensorDetail, summary="Get sensor details")
-async def get_sensor(sensor_id: str):
-    """
-    Get detailed information for a specific sensor.
-    
-    Args:
-        sensor_id: Unique identifier of the sensor
-        
-    Returns:
-        SensorDetail: Detailed sensor information including latest reading
-        
-    Raises:
-        HTTPException: 404 if sensor not found
-    """
-    try:
-        influx = get_influxdb_manager()
-        
-        # Get sensor details
-        sensor_data = influx.get_sensor_details(sensor_id)
-        if not sensor_data:
+        if not success:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Sensor with id '{sensor_id}' not found"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to write sensor data to database"
             )
         
-        # Get latest reading
-        latest = influx.get_latest_reading(sensor_id)
-        
-        return SensorDetail(
-            id=sensor_data["id"],
-            name=sensor_data["name"],
-            type=sensor_data["type"],
-            location=sensor_data.get("location"),
-            unit=sensor_data["unit"],
-            status=sensor_data["status"],
-            last_reading=SensorReading(**latest) if latest else None
-        )
-    
-    except HTTPException:
-        raise
+        return {
+            "message": "Sensor data written successfully",
+            "sensor_id": reading.sensor_id,
+            "timestamp": reading.timestamp or datetime.utcnow()
+        }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error fetching sensor details: {str(e)}"
+            detail=f"Error writing sensor data: {str(e)}"
         )
 
 
-@router.get("/{sensor_id}/latest", response_model=SensorReading, summary="Get latest reading")
-async def get_latest_reading(sensor_id: str):
-    """
-    Get the most recent reading from a specific sensor.
-    
-    Args:
-        sensor_id: Unique identifier of the sensor
-        
-    Returns:
-        SensorReading: Latest sensor reading with timestamp and value
-        
-    Raises:
-        HTTPException: 404 if sensor not found or no readings available
-    """
-    try:
-        influx = get_influxdb_manager()
-        
-        # Get latest reading
-        latest = influx.get_latest_reading(sensor_id)
-        if not latest:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No readings found for sensor '{sensor_id}'"
-            )
-        
-        return SensorReading(**latest)
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error fetching latest reading: {str(e)}"
-        )
-
-
-@router.get("/{sensor_id}/history", response_model=SensorHistory, summary="Get historical readings")
-async def get_sensor_history(
-    sensor_id: str,
-    start_time: Optional[datetime] = Query(
-        None,
-        description="Start time for historical data (ISO 8601 format)",
-        example="2025-11-27T00:00:00Z"
-    ),
-    end_time: Optional[datetime] = Query(
-        None,
-        description="End time for historical data (ISO 8601 format)",
-        example="2025-11-28T23:59:59Z"
-    ),
-    limit: int = Query(
-        1000,
-        ge=1,
-        le=10000,
-        description="Maximum number of readings to return"
-    ),
-    interval: Optional[str] = Query(
-        None,
-        description="Aggregation interval (e.g., '1h', '15m', '30s')",
-        example="1h",
-        regex="^[0-9]+(s|m|h|d)$"
-    )
+@router.get("/history/24h", response_model=SensorDataResponse)
+async def get_24h_history(
+    sensor_id: Optional[str] = Query(None, description="Filter by sensor ID"),
+    sensor_type: Optional[str] = Query(None, description="Filter by sensor type")
 ):
     """
-    Get historical readings for a specific sensor within a time range.
+    Get 24-hour sensor history with 5-minute aggregation.
     
-    Args:
-        sensor_id: Unique identifier of the sensor
-        start_time: Start of time range (default: 24 hours ago)
-        end_time: End of time range (default: now)
-        limit: Maximum number of readings to return (1-10000)
-        interval: Aggregation interval (e.g., '1h', '15m', '30s') for downsampling
-        
-    Returns:
-        SensorHistory: Historical sensor readings within the specified time range
-        
-    Raises:
-        HTTPException: 404 if sensor not found or no data in range
+    Returns data points aggregated into 5-minute intervals.
     """
     try:
-        influx = get_influxdb_manager()
+        data = influxdb_service.query_24h_history(
+            sensor_id=sensor_id,
+            sensor_type=sensor_type
+        )
         
-        # Set default time range if not provided
-        if start_time is None:
-            start_time = datetime.utcnow() - timedelta(hours=24)
-        if end_time is None:
-            end_time = datetime.utcnow()
+        data_points = [
+            SensorDataPoint(
+                timestamp=point["timestamp"],
+                value=point["value"],
+                sensor_id=point["sensor_id"],
+                sensor_type=point["sensor_type"]
+            )
+            for point in data
+        ]
         
-        # Validate time range
-        if start_time >= end_time:
+        return SensorDataResponse(
+            data=data_points,
+            count=len(data_points),
+            query_info={
+                "range": "24 hours",
+                "aggregation": "5 minutes",
+                "function": "mean"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error querying 24h history: {str(e)}"
+        )
+
+
+@router.get("/history/7d", response_model=SensorDataResponse)
+async def get_7d_history(
+    sensor_id: Optional[str] = Query(None, description="Filter by sensor ID"),
+    sensor_type: Optional[str] = Query(None, description="Filter by sensor type")
+):
+    """
+    Get 7-day sensor history with 1-hour aggregation.
+    
+    Returns data points aggregated into 1-hour intervals.
+    """
+    try:
+        data = influxdb_service.query_7d_history(
+            sensor_id=sensor_id,
+            sensor_type=sensor_type
+        )
+        
+        data_points = [
+            SensorDataPoint(
+                timestamp=point["timestamp"],
+                value=point["value"],
+                sensor_id=point["sensor_id"],
+                sensor_type=point["sensor_type"]
+            )
+            for point in data
+        ]
+        
+        return SensorDataResponse(
+            data=data_points,
+            count=len(data_points),
+            query_info={
+                "range": "7 days",
+                "aggregation": "1 hour",
+                "function": "mean"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error querying 7d history: {str(e)}"
+        )
+
+
+@router.get("/history/30d", response_model=SensorDataResponse)
+async def get_30d_history(
+    sensor_id: Optional[str] = Query(None, description="Filter by sensor ID"),
+    sensor_type: Optional[str] = Query(None, description="Filter by sensor type")
+):
+    """
+    Get 30-day sensor history with 6-hour aggregation.
+    
+    Returns data points aggregated into 6-hour intervals.
+    """
+    try:
+        data = influxdb_service.query_30d_history(
+            sensor_id=sensor_id,
+            sensor_type=sensor_type
+        )
+        
+        data_points = [
+            SensorDataPoint(
+                timestamp=point["timestamp"],
+                value=point["value"],
+                sensor_id=point["sensor_id"],
+                sensor_type=point["sensor_type"]
+            )
+            for point in data
+        ]
+        
+        return SensorDataResponse(
+            data=data_points,
+            count=len(data_points),
+            query_info={
+                "range": "30 days",
+                "aggregation": "6 hours",
+                "function": "mean"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error querying 30d history: {str(e)}"
+        )
+
+
+@router.get("/aggregate", response_model=SensorDataResponse)
+async def get_custom_aggregation(
+    start_time: datetime = Query(..., description="Start time (ISO 8601 format)"),
+    stop_time: Optional[datetime] = Query(None, description="Stop time (ISO 8601 format)"),
+    window: str = Query("5m", description="Aggregation window (e.g., 5m, 1h, 1d)"),
+    function: str = Query("mean", description="Aggregation function (mean, max, min, sum, count)"),
+    sensor_id: Optional[str] = Query(None, description="Filter by sensor ID"),
+    sensor_type: Optional[str] = Query(None, description="Filter by sensor type")
+):
+    """
+    Get sensor data with custom time range and aggregation.
+    
+    Example query:
+    ```
+    /api/sensors/aggregate?start_time=2025-11-27T00:00:00Z&window=30m&function=max&sensor_id=soil_sensor_01
+    ```
+    """
+    try:
+        # Validate aggregation function
+        valid_functions = ["mean", "max", "min", "sum", "count"]
+        if function not in valid_functions:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="start_time must be before end_time"
+                detail=f"Invalid aggregation function. Must be one of: {', '.join(valid_functions)}"
             )
         
-        # Get historical readings
-        readings_data = influx.get_sensor_history(sensor_id, start_time, end_time, limit, interval)
-        if not readings_data:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No historical data found for sensor '{sensor_id}' in the specified time range"
-            )
-        
-        readings = [SensorReading(**r) for r in readings_data]
-        
-        return SensorHistory(
-            sensor_id=sensor_id,
-            readings=readings,
+        data = influxdb_service.query_custom_aggregation(
             start_time=start_time,
-            end_time=end_time,
-            count=len(readings)
+            stop_time=stop_time,
+            aggregation_window=window,
+            aggregation_function=function,
+            sensor_id=sensor_id,
+            sensor_type=sensor_type
         )
-    
+        
+        data_points = [
+            SensorDataPoint(
+                timestamp=point["timestamp"],
+                value=point["value"],
+                sensor_id=point["sensor_id"],
+                sensor_type=point["sensor_type"]
+            )
+            for point in data
+        ]
+        
+        return SensorDataResponse(
+            data=data_points,
+            count=len(data_points),
+            query_info={
+                "start_time": start_time.isoformat(),
+                "stop_time": stop_time.isoformat() if stop_time else "now",
+                "aggregation": window,
+                "function": function
+            }
+        )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error fetching sensor history: {str(e)}"
+            detail=f"Error querying custom aggregation: {str(e)}"
         )

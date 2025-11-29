@@ -2,6 +2,11 @@
 
 import os
 from typing import List
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 
 
 class Settings:
@@ -36,12 +41,9 @@ class Settings:
     
     # InfluxDB settings
     INFLUXDB_URL: str = os.getenv("INFLUXDB_URL", "http://localhost:8086")
-    INFLUXDB_TOKEN: str = os.getenv("INFLUXDB_TOKEN", "your-influxdb-token")
+    INFLUXDB_TOKEN: str = os.getenv("INFLUXDB_TOKEN", "")
     INFLUXDB_ORG: str = os.getenv("INFLUXDB_ORG", "smart-irrigation")
-    INFLUXDB_BUCKET: str = os.getenv("INFLUXDB_BUCKET", "sensors")
-    
-    # Cache settings
-    CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", "300"))  # 5 minutes default
+    INFLUXDB_BUCKET: str = os.getenv("INFLUXDB_BUCKET", "sensor-data")
 
 
 settings = Settings()

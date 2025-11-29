@@ -12,11 +12,8 @@ email-validator==2.2.0
 sqlalchemy==2.0.36
 psycopg2-binary==2.9.9
 
-# InfluxDB client
-influxdb-client==1.44.0
-
-# Caching
-cachetools==5.5.0
+# InfluxDB for time-series sensor data
+influxdb-client==1.45.0
 
 # Testing dependencies
 pytest==8.3.4

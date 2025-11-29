@@ -1,16 +1,6 @@
 # Smart Irrigation API
 
-A comprehensive FastAPI-based REST API for smart irrigation management with JWT authentication, real-time sensor data integration via InfluxDB, and performance-optimized caching.
-
-## Features
-
-- 🔐 **JWT Authentication**: Secure user registration and login
-- 📊 **Sensor Data Management**: Real-time and historical sensor data access
-- 💾 **InfluxDB Integration**: Time-series database for sensor readings
-- ⚡ **Caching**: Performance-optimized with TTL-based caching
-- 📖 **Auto-generated Documentation**: Interactive API docs with Swagger/ReDoc
-- ✅ **Type Safety**: Full type hints and Pydantic validation
-- 🧪 **Comprehensive Tests**: Complete test coverage for all endpoints
+A FastAPI-based REST API for smart irrigation management with JWT authentication and InfluxDB time-series sensor data storage.
 
 ## Project Structure
 
@@ -22,29 +12,26 @@ smart-irrigation-api/
 │   └── sensor.py        # Sensor data models (NEW)
 ├── routes/              # API routes
 │   ├── __init__.py
-│   ├── auth.py          # Authentication endpoints
-│   └── sensors.py       # Sensor endpoints (NEW)
-├── utils/               # Utility functions
+│   ├── user.py      # User authentication models
+│   └── sensor.py    # Sensor data models
+├── routes/          # API routes
 │   ├── __init__.py
-│   ├── auth.py          # Password hashing and JWT utilities
-│   ├── influxdb_client.py  # InfluxDB client (NEW)
-│   └── cache.py         # Caching utility (NEW)
-├── tests/               # Test suite
+│   ├── auth.py      # Authentication endpoints
+│   └── sensors.py   # Sensor data endpoints
+├── services/        # Business logic layer
 │   ├── __init__.py
-│   ├── test_auth.py     # Authentication tests
-│   └── test_sensors.py  # Sensor tests (NEW)
-├── Deliverables/        # Project documentation
-│   ├── Task C1.1/       # Authentication deliverables
-│   ├── Task C1.2/       # Postman collections
-│   ├── Task C1.3/       # Additional auth docs
-│   └── Task C2.1/       # Sensor API deliverables (NEW)
-│       ├── README.md            # Complete implementation guide
-│       ├── API_REFERENCE.md     # Detailed API reference
-│       └── INFLUXDB_SETUP.md    # InfluxDB setup guide
-├── config.py            # Application configuration
-├── main.py              # FastAPI application entry point
-├── requirements.txt     # Python dependencies
-└── .env.example         # Environment template (NEW)
+│   └── influxdb_service.py  # InfluxDB integration
+├── utils/           # Utility functions
+│   ├── __init__.py
+│   └── auth.py      # Password hashing and JWT utilities
+├── tests/           # Test suite
+│   ├── test_auth.py
+│   └── test_sensors.py
+├── config.py        # Application configuration
+├── main.py          # FastAPI application entry point
+├── test_influxdb.py # InfluxDB integration test
+├── INFLUXDB_SETUP.md  # InfluxDB setup guide
+└── requirements.txt # Python dependencies
 ```
 
 ## Quick Start
@@ -67,16 +54,7 @@ cp .env.example .env
 Edit `.env` with your configuration:
 
 ```env
-# InfluxDB Configuration
-INFLUXDB_URL=http://localhost:8086
-INFLUXDB_TOKEN=your-influxdb-token-here
-INFLUXDB_ORG=smart-irrigation
-INFLUXDB_BUCKET=sensors
-
-# Cache Configuration
-CACHE_TTL_SECONDS=300
-
-# Database Configuration (PostgreSQL)
+# Database Configuration (PostgreSQL - for user authentication)
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_NAME=smart_irrigation
@@ -85,40 +63,18 @@ DATABASE_PASSWORD=postgres
 
 # JWT Configuration
 SECRET_KEY=your-secret-key-here-change-in-production
+
+# InfluxDB Configuration (for sensor data)
+INFLUXDB_URL=http://localhost:8086
+INFLUXDB_TOKEN=your-influxdb-token-here
+INFLUXDB_ORG=smart-irrigation
+INFLUXDB_BUCKET=sensor-data
 ```
 
-### 3. Set Up InfluxDB (Required for Sensor Endpoints)
-
-See [Deliverables/Task C2.1/INFLUXDB_SETUP.md](./Deliverables/Task%20C2.1/INFLUXDB_SETUP.md) for detailed setup instructions.
-
-Quick Docker setup:
-```bash
-docker run -d \
-  --name influxdb \
-  -p 8086:8086 \
-  -v influxdb-data:/var/lib/influxdb2 \
-  -e DOCKER_INFLUXDB_INIT_MODE=setup \
-  -e DOCKER_INFLUXDB_INIT_USERNAME=admin \
-  -e DOCKER_INFLUXDB_INIT_PASSWORD=adminpassword123 \
-  -e DOCKER_INFLUXDB_INIT_ORG=smart-irrigation \
-  -e DOCKER_INFLUXDB_INIT_BUCKET=sensors \
-  -e DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=your-super-secret-token \
-  influxdb:2.7
-```
-
-### 4. Run the Server
-
-```bash
-python main.py
-```
-
-The server will start on `http://0.0.0.0:8000`
-
-### 5. Run Tests
-
-```bash
-pytest tests/ -v
-```
+**Important**: 
+- Change the `SECRET_KEY` to a secure random string in production
+- Get your InfluxDB token from http://localhost:8086 (Data → API Tokens)
+- See [INFLUXDB_SETUP.md](INFLUXDB_SETUP.md) for detailed InfluxDB setup instructions
 
 ## Running the Server
 
@@ -175,6 +131,38 @@ curl "http://localhost:8000/api/sensors/sensor_temp_001/history?limit=100"
 curl http://localhost:8000/api/sensors/summary
 ```
 
+### Sensor Data Endpoints
+
+#### Write Sensor Data
+```bash
+POST /api/sensors/write
+Content-Type: application/json
+
+{
+  "sensor_id": "soil_sensor_01",
+  "sensor_type": "soil_moisture",
+  "value": 45.5,
+  "location": "field_a"
+}
+```
+
+#### Get Historical Data
+```bash
+# 24-hour history (5-minute aggregation)
+GET /api/sensors/history/24h?sensor_id=soil_sensor_01
+
+# 7-day history (1-hour aggregation)
+GET /api/sensors/history/7d?sensor_type=soil_moisture
+
+# 30-day history (6-hour aggregation)
+GET /api/sensors/history/30d?sensor_id=soil_sensor_01
+
+# Custom aggregation
+GET /api/sensors/aggregate?start_time=2025-11-27T00:00:00Z&window=30m&function=max
+```
+
+**Supported aggregation functions**: `mean`, `max`, `min`, `sum`, `count`
+
 ## Configuration
 
 The application can be configured via `config.py` or environment variables:
@@ -225,6 +213,7 @@ The application can be configured via `config.py` or environment variables:
 - **influxdb-client**: InfluxDB 2.x client for time-series data 🆕
 - **sqlalchemy**: SQL toolkit and ORM
 - **psycopg2-binary**: PostgreSQL database adapter
+- **influxdb-client**: InfluxDB Python client for time-series data
 
 ### Performance
 - **cachetools**: In-memory caching with TTL 🆕
