@@ -2,6 +2,11 @@
 
 import os
 from typing import List
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 
 
 class Settings:
@@ -33,6 +38,12 @@ class Settings:
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here-change-in-production")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_HOURS: int = 24
+    
+    # InfluxDB settings
+    INFLUXDB_URL: str = os.getenv("INFLUXDB_URL", "http://localhost:8086")
+    INFLUXDB_TOKEN: str = os.getenv("INFLUXDB_TOKEN", "")
+    INFLUXDB_ORG: str = os.getenv("INFLUXDB_ORG", "smart-irrigation")
+    INFLUXDB_BUCKET: str = os.getenv("INFLUXDB_BUCKET", "sensor-data")
 
 
 settings = Settings()
