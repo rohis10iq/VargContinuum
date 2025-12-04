@@ -2,6 +2,18 @@
 
 A FastAPI-based REST API for smart irrigation management with JWT authentication and InfluxDB time-series sensor data storage.
 
+## Features
+
+- 🔐 **JWT Authentication**: Secure user registration and login
+- 📊 **Time-Series Data**: InfluxDB integration for sensor data storage
+- 🌐 **Real-Time Streaming**: WebSocket support for live sensor updates
+- 📡 **Dual Endpoints**: REST API + WebSocket for maximum flexibility
+- 🔄 **Auto-Broadcasting**: Sensor data automatically streams to connected clients
+- 💓 **Heartbeat Mechanism**: Keeps WebSocket connections alive
+- 📈 **Historical Data**: Query sensor history with custom aggregations
+- 🧪 **Comprehensive Testing**: Unit tests, manual tests, and interactive HTML test UI
+- 📚 **Auto-Documentation**: Swagger UI and ReDoc included
+
 ## Project Structure
 
 ```
@@ -9,20 +21,26 @@ smart-irrigation-api/
 ├── models/          # Data models
 │   ├── __init__.py
 │   ├── user.py      # User authentication models
-│   └── sensor.py    # Sensor data models
+│   ├── sensor.py    # Sensor data models
+│   └── websocket.py # WebSocket message models
 ├── routes/          # API routes
 │   ├── __init__.py
 │   ├── auth.py      # Authentication endpoints
-│   └── sensors.py   # Sensor data endpoints
+│   ├── sensors.py   # Sensor data endpoints
+│   └── websocket.py # WebSocket endpoints
 ├── services/        # Business logic layer
 │   ├── __init__.py
-│   └── influxdb_service.py  # InfluxDB integration
+│   ├── influxdb_service.py  # InfluxDB integration
+│   └── websocket_manager.py # WebSocket connection manager
 ├── utils/           # Utility functions
 │   ├── __init__.py
 │   └── auth.py      # Password hashing and JWT utilities
 ├── tests/           # Test suite
 │   ├── test_auth.py
-│   └── test_sensors.py
+│   ├── test_sensors.py
+│   ├── test_websocket_manager.py  # WebSocket unit tests
+│   ├── test_websocket_manual.py   # Manual WebSocket tests
+│   └── websocket_test.html        # Interactive WebSocket test UI
 ├── config.py        # Application configuration
 ├── main.py          # FastAPI application entry point
 ├── test_influxdb.py # InfluxDB integration test
@@ -99,8 +117,8 @@ Once the server is running, you can access:
 ## Available Endpoints
 
 ### General Endpoints
-- `GET /` - Root endpoint, returns welcome message
-- `GET /health` - Health check endpoint
+- `GET /` - Root endpoint, returns welcome message and WebSocket endpoint information
+- `GET /health` - Health check endpoint with WebSocket connection statistics
 
 ### Authentication Endpoints
 
@@ -175,6 +193,231 @@ GET /api/sensors/aggregate?start_time=2025-11-27T00:00:00Z&window=30m&function=m
 
 **Supported aggregation functions**: `mean`, `max`, `min`, `sum`, `count`
 
+### WebSocket Endpoints (Real-Time Streaming)
+
+The API provides WebSocket endpoints for real-time sensor data streaming. These endpoints allow clients to receive live updates as sensor data changes.
+
+#### Connect to Specific Sensor Stream
+```javascript
+// JavaScript example
+const ws = new WebSocket('ws://localhost:8000/ws/sensors/soil_sensor_01');
+
+ws.onopen = () => {
+  console.log('Connected to sensor stream');
+};
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Received:', data);
+  
+  // Message types:
+  // - type: "connect" - Connection confirmation
+  // - type: "update" - Sensor data update
+  // - type: "heartbeat" - Keep-alive ping (every 30s)
+  // - type: "error" - Error notification
+};
+
+ws.onclose = () => {
+  console.log('Disconnected');
+};
+```
+
+**Endpoint**: `ws://localhost:8000/ws/sensors/{sensor_id}`
+
+**What you receive:**
+1. Connection confirmation message
+2. Latest sensor data (if available)
+3. Real-time updates when this sensor's data changes
+4. Heartbeat messages every 30 seconds
+
+**Example messages:**
+```json
+// Connection confirmation
+{
+  "type": "connect",
+  "timestamp": "2025-12-04T20:00:00Z",
+  "message": "Connected to sensor stream: soil_sensor_01",
+  "sensor_id": "soil_sensor_01"
+}
+
+// Sensor update
+{
+  "type": "update",
+  "timestamp": "2025-12-04T20:01:30Z",
+  "sensor_id": "soil_sensor_01",
+  "sensor_type": "soil_moisture",
+  "value": 45.5,
+  "location": "field_a"
+}
+
+// Heartbeat
+{
+  "type": "heartbeat",
+  "timestamp": "2025-12-04T20:02:00Z",
+  "message": "ping"
+}
+```
+
+#### Connect to All Sensors Stream
+```javascript
+// JavaScript example
+const ws = new WebSocket('ws://localhost:8000/ws/sensors/stream');
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  
+  if (data.type === 'summary') {
+    // Initial dashboard summary with all sensors
+    console.log('All sensors:', data.data);
+  } else if (data.type === 'update') {
+    // Real-time update from any sensor
+    console.log(`${data.sensor_id}: ${data.value}`);
+  }
+};
+```
+
+**Endpoint**: `ws://localhost:8000/ws/sensors/stream`
+
+**What you receive:**
+1. Connection confirmation message
+2. Dashboard summary (latest data from all sensors)
+3. Real-time updates from ALL sensors
+4. Heartbeat messages every 30 seconds
+
+**Example messages:**
+```json
+// Connection confirmation
+{
+  "type": "connect",
+  "timestamp": "2025-12-04T20:00:00Z",
+  "message": "Connected to global sensor stream"
+}
+
+// Dashboard summary
+{
+  "type": "summary",
+  "message": "Current sensor summary",
+  "count": 3,
+  "data": [
+    {
+      "sensor_id": "soil_sensor_01",
+      "sensor_type": "soil_moisture",
+      "value": 45.5,
+      "location": "field_a",
+      "timestamp": "2025-12-04T19:59:00Z"
+    },
+    // ... more sensors
+  ]
+}
+
+// Real-time update from any sensor
+{
+  "type": "update",
+  "timestamp": "2025-12-04T20:01:30Z",
+  "sensor_id": "temp_sensor_02",
+  "sensor_type": "temperature",
+  "value": 22.3,
+  "location": "field_b"
+}
+```
+
+#### WebSocket Connection Statistics
+```bash
+GET /ws/stats
+```
+
+**Response:**
+```json
+{
+  "global_connections": 5,
+  "sensor_connections": {
+    "soil_sensor_01": 2,
+    "temp_sensor_02": 1
+  },
+  "total_connections": 8
+}
+```
+
+#### Testing WebSocket Connections
+
+**Option 1: Interactive HTML Test Interface**
+```bash
+# Open in your browser
+open tests/websocket_test.html
+```
+
+Features:
+- Connect to specific sensor or all sensors
+- View real-time messages with color coding
+- Send test data via REST API
+- Monitor connection statistics
+- Clear log functionality
+
+**Option 2: Python Test Script**
+```bash
+python tests/test_websocket_manual.py
+```
+
+**Option 3: Using `wscat` (command-line tool)**
+```bash
+# Install wscat
+npm install -g wscat
+
+# Connect to specific sensor
+wscat -c ws://localhost:8000/ws/sensors/soil_sensor_01
+
+# Connect to all sensors
+wscat -c ws://localhost:8000/ws/sensors/stream
+```
+
+#### WebSocket Message Types
+
+All WebSocket messages follow a structured format:
+
+| Type | Description | When Sent |
+|------|-------------|-----------|
+| `connect` | Connection confirmation | When client first connects |
+| `update` | Sensor data update | When sensor data is written via POST /api/sensors/write |
+| `summary` | Dashboard summary | On connection to global stream |
+| `heartbeat` | Keep-alive ping | Every 30 seconds to all connections |
+| `error` | Error notification | When an error occurs |
+
+#### WebSocket Features
+
+✅ **Automatic Reconnection Handling**: Clients should implement reconnection logic  
+✅ **Heartbeat/Ping**: Keeps connections alive (30-second interval)  
+✅ **Broadcast to Multiple Clients**: All connected clients receive updates  
+✅ **Sensor-Specific Subscriptions**: Subscribe to individual sensors  
+✅ **Global Stream**: Monitor all sensors simultaneously  
+✅ **Error Handling**: Graceful disconnection and error messages  
+✅ **Connection Tracking**: Monitor active connections via `/ws/stats`  
+✅ **CORS Enabled**: Cross-origin WebSocket connections supported  
+
+#### Integration with REST API
+
+When you write sensor data via the REST API, it automatically broadcasts to WebSocket clients:
+
+```bash
+# 1. Write sensor data via REST API
+POST /api/sensors/write
+{
+  "sensor_id": "soil_sensor_01",
+  "sensor_type": "soil_moisture",
+  "value": 45.5,
+  "location": "field_a"
+}
+
+# 2. All connected WebSocket clients receive the update immediately
+# - Clients on ws://localhost:8000/ws/sensors/soil_sensor_01
+# - Clients on ws://localhost:8000/ws/sensors/stream
+```
+
+This creates a complete real-time pipeline:
+```
+Sensor → REST API → InfluxDB → WebSocket Broadcast → All Clients
+```
+
+
 ## Configuration
 
 The application can be configured via `config.py` or environment variables:
@@ -212,6 +455,8 @@ The application can be configured via `config.py` or environment variables:
 - **sqlalchemy**: SQL toolkit and ORM
 - **psycopg2-binary**: PostgreSQL database adapter
 - **influxdb-client**: InfluxDB Python client for time-series data
+- **websockets**: WebSocket client/server implementation for real-time communication
+- **pytest**: Testing framework (dev dependency)
 
 ## Authentication Features
 
@@ -221,6 +466,103 @@ The application can be configured via `config.py` or environment variables:
 - **Role-based Access**: Users have roles (e.g., "farmer") for future authorization
 - **Email Validation**: Ensures valid email format during registration
 - **PostgreSQL Storage**: User data stored in PostgreSQL database
+
+## WebSocket Features
+
+The Smart Irrigation API includes a complete WebSocket infrastructure for real-time sensor data streaming:
+
+### Core Components
+
+#### 1. Connection Manager (`services/websocket_manager.py`)
+- **Connection Tracking**: Maintains separate lists for global and sensor-specific connections
+- **Lifecycle Management**: Handles connect/disconnect events with automatic cleanup
+- **Broadcasting System**: 
+  - `broadcast()` - Send to all global stream clients
+  - `broadcast_to_sensor()` - Send to sensor-specific clients
+  - `broadcast_sensor_update()` - High-level sensor update broadcaster
+- **Heartbeat Mechanism**: Sends ping every 30 seconds to keep connections alive
+- **Statistics**: Real-time connection monitoring via `get_connection_stats()`
+
+#### 2. WebSocket Routes (`routes/websocket.py`)
+- **`/ws/sensors/{sensor_id}`**: Stream data from a specific sensor
+- **`/ws/sensors/stream`**: Stream data from all sensors
+- **`/ws/stats`**: Get connection statistics (REST endpoint)
+
+#### 3. Message Models (`models/websocket.py`)
+Structured message types with Pydantic validation:
+- `ConnectMessage` - Connection confirmation
+- `SensorUpdateMessage` - Real-time sensor updates
+- `HeartbeatMessage` - Keep-alive pings
+- `ErrorMessage` - Error notifications
+- `MessageType` enum - Type safety for all messages
+
+### Real-Time Pipeline
+
+```
+IoT Sensor → POST /api/sensors/write → InfluxDB → WebSocket Broadcast → All Connected Clients
+```
+
+When sensor data is written via REST API, it automatically broadcasts to:
+1. All clients connected to the global stream (`/ws/sensors/stream`)
+2. All clients connected to that specific sensor (`/ws/sensors/{sensor_id}`)
+
+### Connection Features
+
+- ✅ **Automatic Heartbeat**: 30-second ping/pong to prevent timeouts
+- ✅ **Graceful Disconnection**: Proper cleanup on connection loss
+- ✅ **Error Handling**: Comprehensive error messages and logging
+- ✅ **Multiple Clients**: Support for unlimited concurrent connections
+- ✅ **Sensor Filtering**: Subscribe to specific sensors or all sensors
+- ✅ **Initial Data**: Sends latest data immediately on connection
+- ✅ **CORS Support**: Cross-origin WebSocket connections enabled
+- ✅ **Monitoring**: Real-time connection statistics
+
+### Testing Tools
+
+1. **Interactive HTML UI**: `tests/websocket_test.html`
+   - Visual connection testing
+   - Real-time message log with color coding
+   - Statistics dashboard
+   - Send test data functionality
+
+2. **Python Test Script**: `tests/test_websocket_manual.py`
+   - Automated connection testing
+   - Multi-client simulation
+   - Concurrent connection testing
+
+3. **Unit Tests**: `tests/test_websocket_manager.py`
+   - Connection manager tests
+   - Broadcast functionality tests
+   - Statistics tests
+
+### Lifecycle Management
+
+The WebSocket infrastructure is integrated into the FastAPI application lifecycle:
+
+**On Startup** (`main.py`):
+```python
+# Start heartbeat task
+connection_manager.heartbeat_task = asyncio.create_task(
+    connection_manager.start_heartbeat()
+)
+```
+
+**On Shutdown** (`main.py`):
+```python
+# Cancel heartbeat task gracefully
+if connection_manager.heartbeat_task:
+    connection_manager.heartbeat_task.cancel()
+```
+
+### Production Ready
+
+- ✅ Comprehensive error handling throughout
+- ✅ Logging configured for debugging and monitoring
+- ✅ Automatic cleanup of dead connections
+- ✅ Type hints and Pydantic validation
+- ✅ Tested with multiple concurrent clients
+- ✅ Documentation in code and README
+- ✅ Health check integration
 
 ## Database Schema
 

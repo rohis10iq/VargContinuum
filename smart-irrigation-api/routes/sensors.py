@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, status, Query, Path
 
 from models.sensor import SensorReading, SensorDataResponse, SensorDataPoint
 from services.influxdb_service import influxdb_service
+from services.websocket_manager import connection_manager
 
 
 router = APIRouter(prefix="/api/sensors", tags=["sensors"])
@@ -78,6 +79,7 @@ async def get_sensor_details(sensor_id: str = Path(..., description="Sensor ID")
     return latest
 
 
+
 @router.post("/write", status_code=status.HTTP_201_CREATED)
 async def write_sensor_data(reading: SensorReading):
     """
@@ -108,6 +110,18 @@ async def write_sensor_data(reading: SensorReading):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to write sensor data to database"
             )
+        
+        # Broadcast sensor update to WebSocket clients
+        try:
+            await connection_manager.broadcast_sensor_update(
+                sensor_id=reading.sensor_id,
+                sensor_type=reading.sensor_type,
+                value=reading.value,
+                location=reading.location
+            )
+        except Exception as ws_error:
+            # Log WebSocket broadcast error but don't fail the request
+            print(f"Warning: WebSocket broadcast failed: {ws_error}")
         
         return {
             "message": "Sensor data written successfully",
