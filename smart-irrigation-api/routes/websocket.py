@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, status
 import uuid
 
-from models.websocket import SensorReadingMessage, WebSocketMessage, ConnectionStatusMessage, ErrorMessage
+from models.websocket import WebSocketMessage, ErrorMessage
 from utils.websocket_manager import ws_manager
 from utils.mqtt_client import get_mqtt_client
 from utils.auth import verify_token
