@@ -2,7 +2,6 @@
 import logging
 from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, status
-from fastapi.exceptions import WebSocketException
 import uuid
 
 from models.websocket import SensorReadingMessage, WebSocketMessage, ConnectionStatusMessage, ErrorMessage
