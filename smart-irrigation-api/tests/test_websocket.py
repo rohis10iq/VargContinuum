@@ -1,6 +1,5 @@
 """Comprehensive tests for WebSocket real-time sensor streaming."""
 import pytest
-import asyncio
 import json
 from datetime import datetime
 from fastapi.testclient import TestClient
