@@ -132,5 +132,5 @@ async def websocket_sensor_endpoint(
                 timestamp=datetime.utcnow().isoformat() + "Z"
             )
             await ws_manager.send_personal(websocket, error_msg.model_dump())
-        except:
+        except Exception:
             pass
