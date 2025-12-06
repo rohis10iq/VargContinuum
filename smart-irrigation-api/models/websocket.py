@@ -58,3 +58,41 @@ class ConnectMessage(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     message: str = Field(..., description="Welcome message")
     sensor_id: Optional[str] = Field(None, description="Sensor ID if specific sensor stream")
+
+
+class LiveSensorMessage(BaseModel):
+    """
+    Live sensor data message matching B2.2 specification format.
+    
+    Format: { "sensor_id": "V1", "moisture": 45.2, "temperature": 22.1, "timestamp": "2025-11-25T14:30:00Z" }
+    """
+    
+    model_config = {"ser_json_timedelta": "iso8601"}
+    
+    sensor_id: str = Field(..., description="Sensor identifier (e.g., V1)")
+    moisture: Optional[float] = Field(None, description="Soil moisture percentage")
+    temperature: Optional[float] = Field(None, description="Temperature in Celsius")
+    humidity: Optional[float] = Field(None, description="Air humidity percentage")
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Reading timestamp")
+    
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
+        """Override to format timestamp in ISO format."""
+        data = super().model_dump(**kwargs)
+        if isinstance(data.get('timestamp'), datetime):
+            data['timestamp'] = data['timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ')
+        return data
+    
+    def to_broadcast_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for WebSocket broadcast."""
+        result = {
+            "sensor_id": self.sensor_id,
+            "timestamp": self.timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
+        }
+        if self.moisture is not None:
+            result["moisture"] = self.moisture
+        if self.temperature is not None:
+            result["temperature"] = self.temperature
+        if self.humidity is not None:
+            result["humidity"] = self.humidity
+        return result
+

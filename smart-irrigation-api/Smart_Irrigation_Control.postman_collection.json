@@ -1,0 +1,354 @@
+{
+    "info": {
+        "_postman_id": "smart-irrigation-control-2025",
+        "name": "Smart Irrigation - Control API",
+        "description": "B2.3: Irrigation Control API endpoints for manual and automated irrigation triggers",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Manual Irrigation",
+            "item": [
+                {
+                    "name": "Trigger Manual Irrigation",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"zone_id\": 1,\n    \"duration_minutes\": 30,\n    \"trigger_type\": \"manual\",\n    \"user_id\": \"technician_01\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/irrigation/manual",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "irrigation",
+                                "manual"
+                            ]
+                        },
+                        "description": "Trigger manual irrigation for zone 1 (Orchard A) for 30 minutes"
+                    }
+                },
+                {
+                    "name": "Trigger Zone 5 (Potato Field)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"zone_id\": 5,\n    \"duration_minutes\": 45,\n    \"trigger_type\": \"manual\",\n    \"user_id\": \"farmer_jane\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/irrigation/manual",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "irrigation",
+                                "manual"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Test Invalid Zone (Should Fail)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"zone_id\": 99,\n    \"duration_minutes\": 30,\n    \"trigger_type\": \"manual\",\n    \"user_id\": \"test_user\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/irrigation/manual",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "irrigation",
+                                "manual"
+                            ]
+                        },
+                        "description": "Should fail with invalid zone error"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Schedules",
+            "item": [
+                {
+                    "name": "Create Schedule",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"zone_id\": 2,\n    \"duration_minutes\": 20,\n    \"schedule_time\": \"2025-12-07T06:00:00Z\",\n    \"repeat_pattern\": \"daily\",\n    \"user_id\": \"scheduler_01\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/irrigation/schedule",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "irrigation",
+                                "schedule"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get All Schedules",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/irrigation/schedules",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "irrigation",
+                                "schedules"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Schedule",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"duration_minutes\": 25,\n    \"is_active\": true\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/irrigation/schedule/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "irrigation",
+                                "schedule",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Cancel Schedule (Disable)",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"is_active\": false\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/irrigation/schedule/1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "irrigation",
+                                "schedule",
+                                "1"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Status & History",
+            "item": [
+                {
+                    "name": "Get All Zones Status",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/irrigation/status",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "irrigation",
+                                "status"
+                            ]
+                        },
+                        "description": "Get current status of all 5 irrigation zones"
+                    }
+                },
+                {
+                    "name": "Get Zone 1 Status",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/irrigation/zone/1/status",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "irrigation",
+                                "zone",
+                                "1",
+                                "status"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Irrigation History",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/irrigation/history?page=1&page_size=20",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "irrigation",
+                                "history"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "page_size",
+                                    "value": "20"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get History for Zone 1",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/irrigation/history?zone_id=1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "irrigation",
+                                "history"
+                            ],
+                            "query": [
+                                {
+                                    "key": "zone_id",
+                                    "value": "1"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Stop Controls",
+            "item": [
+                {
+                    "name": "Stop Zone 1",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/irrigation/stop/1?user_id=technician_01",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "irrigation",
+                                "stop",
+                                "1"
+                            ],
+                            "query": [
+                                {
+                                    "key": "user_id",
+                                    "value": "technician_01"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "EMERGENCY STOP ALL",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/irrigation/stop_all?user_id=emergency_operator",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "irrigation",
+                                "stop_all"
+                            ],
+                            "query": [
+                                {
+                                    "key": "user_id",
+                                    "value": "emergency_operator"
+                                }
+                            ]
+                        },
+                        "description": "⚠️ EMERGENCY: Stops ALL irrigation zones immediately"
+                    }
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8000"
+        }
+    ]
+}

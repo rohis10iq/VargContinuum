@@ -1,17 +1,19 @@
 # Smart Irrigation API
 
-A FastAPI-based REST API for smart irrigation management with JWT authentication and InfluxDB time-series sensor data storage.
+A comprehensive FastAPI-based REST API for smart irrigation management with real-time WebSocket streaming, MQTT integration, JWT authentication, and InfluxDB time-series sensor data storage.
 
 ## Features
 
-- 🔐 **JWT Authentication**: Secure user registration and login
-- 📊 **Time-Series Data**: InfluxDB integration for sensor data storage
-- 🌐 **Real-Time Streaming**: WebSocket support for live sensor updates
-- 📡 **Dual Endpoints**: REST API + WebSocket for maximum flexibility
-- 🔄 **Auto-Broadcasting**: Sensor data automatically streams to connected clients
-- 💓 **Heartbeat Mechanism**: Keeps WebSocket connections alive
-- 📈 **Historical Data**: Query sensor history with custom aggregations
-- 🧪 **Comprehensive Testing**: Unit tests, manual tests, and interactive HTML test UI
+- 🔐 **JWT Authentication**: Secure user registration and login with token-based auth
+- 📊 **Time-Series Data**: InfluxDB integration for sensor data storage and querying
+- 🌐 **Real-Time Streaming**: WebSocket support for live sensor updates with JWT authentication
+- 📡 **MQTT Integration**: Subscribe to MQTT broker for sensor data and publish irrigation commands
+- 💧 **Irrigation Control**: Manual and automated irrigation triggers with safety checks
+- 🛡️ **Safety Mechanisms**: Over-irrigation prevention, saturation risk detection, conflict prevention
+- 🔄 **Auto-Broadcasting**: Sensor data automatically streams to connected clients (rate-limited)
+- 💓 **Heartbeat Mechanism**: Keeps WebSocket connections alive (30s interval)
+- 📈 **Historical Data**: Query sensor history with custom aggregations (24h, 7d, 30d)
+- 🧪 **Comprehensive Testing**: Unit tests, Postman collections, and interactive HTML test UI
 - 📚 **Auto-Documentation**: Swagger UI and ReDoc included
 
 ## Project Structure
@@ -22,16 +24,20 @@ smart-irrigation-api/
 │   ├── __init__.py
 │   ├── user.py      # User authentication models
 │   ├── sensor.py    # Sensor data models
-│   └── websocket.py # WebSocket message models
+│   ├── websocket.py # WebSocket message models
+│   └── irrigation.py # Irrigation control models
 ├── routes/          # API routes
 │   ├── __init__.py
 │   ├── auth.py      # Authentication endpoints
 │   ├── sensors.py   # Sensor data endpoints
-│   └── websocket.py # WebSocket endpoints
+│   ├── websocket.py # WebSocket endpoints
+│   └── irrigation.py # Irrigation control endpoints
 ├── services/        # Business logic layer
 │   ├── __init__.py
 │   ├── influxdb_service.py  # InfluxDB integration
-│   └── websocket_manager.py # WebSocket connection manager
+│   ├── websocket_manager.py # WebSocket connection manager
+│   ├── mqtt_service.py      # MQTT broker integration
+│   └── irrigation_service.py # Irrigation control logic
 ├── utils/           # Utility functions
 │   ├── __init__.py
 │   └── auth.py      # Password hashing and JWT utilities
@@ -45,6 +51,8 @@ smart-irrigation-api/
 ├── main.py          # FastAPI application entry point
 ├── test_influxdb.py # InfluxDB integration test
 ├── INFLUXDB_SETUP.md  # InfluxDB setup guide
+├── Smart_Irrigation_Control.postman_collection.json  # Irrigation API tests
+├── Smart_Irrigation_Sensors.postman_collection.json  # Sensor API tests
 └── requirements.txt # Python dependencies
 ```
 
@@ -79,8 +87,8 @@ Create a `.env` file in the project root with the following variables:
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_NAME=smart_irrigation
-DATABASE_USER=postgres
-DATABASE_PASSWORD=your_password
+DATABASE_USER=syedkhadeen
+DATABASE_PASSWORD=12345678
 
 # JWT Configuration
 SECRET_KEY=your-secret-key-here-change-in-production
@@ -88,13 +96,23 @@ SECRET_KEY=your-secret-key-here-change-in-production
 # InfluxDB Configuration (for sensor data)
 INFLUXDB_URL=http://localhost:8086
 INFLUXDB_TOKEN=your-influxdb-token-here
-INFLUXDB_ORG=smart-irrigation
-INFLUXDB_BUCKET=sensor-data
+INFLUXDB_ORG=SmartIrrigation
+INFLUXDB_BUCKET=sensor_data
+
+# MQTT Broker Configuration (for sensor updates and irrigation commands)
+MQTT_BROKER_HOST=localhost
+MQTT_BROKER_PORT=1883
+MQTT_TOPIC_PREFIX=sensors/#
+MQTT_CLIENT_ID=smart-irrigation-api
+
+# WebSocket Configuration
+WS_RATE_LIMIT_SECONDS=1.0
 ```
 
 **Important**: 
 - Change the `SECRET_KEY` to a secure random string in production
 - Get your InfluxDB token from http://localhost:8086 (Data → API Tokens)
+- MQTT broker is optional for testing - API will work without it
 - See [INFLUXDB_SETUP.md](INFLUXDB_SETUP.md) for detailed InfluxDB setup instructions
 
 ## Running the Server
@@ -416,6 +434,255 @@ This creates a complete real-time pipeline:
 ```
 Sensor → REST API → InfluxDB → WebSocket Broadcast → All Clients
 ```
+
+---
+
+## Irrigation Control API (B2.3)
+
+The API provides comprehensive irrigation control endpoints for manual and automated irrigation triggers with built-in safety mechanisms.
+
+### Zone Configuration
+
+| Zone ID | Name | Type | Description |
+|---------|------|------|-------------|
+| 1 | Orchard A | orchard | Apple trees section |
+| 2 | Orchard B | orchard | Pear trees section |
+| 3 | Orchard C | orchard | Cherry trees section |
+| 4 | Orchard D | orchard | Mixed fruit section |
+| 5 | Potato Field | potato | Main potato cultivation |
+
+### Safety Mechanisms
+
+All irrigation requests are validated against multiple safety checks:
+
+- ✅ **Zone Validation**: Only zones 1-5 are valid
+- ✅ **Conflict Prevention**: Cannot start irrigation if zone is already active
+- ✅ **Daily Limit**: Maximum 2 hours (120 minutes) per zone per day
+- ✅ **Saturation Prevention**: Blocks irrigation if soil moisture > 85%
+
+### Irrigation Endpoints
+
+#### Trigger Manual Irrigation
+```bash
+POST /api/irrigation/manual
+Content-Type: application/json
+
+{
+  "zone_id": 1,
+  "duration_minutes": 30,
+  "trigger_type": "manual",
+  "user_id": "technician_01"
+}
+```
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "event_id": 1,
+  "zone_id": 1,
+  "zone_name": "Orchard A",
+  "duration_minutes": 30,
+  "status": "running",
+  "mqtt_published": true,
+  "message": "Irrigation started for zone 1 (Orchard A)"
+}
+```
+
+**Response (Safety Block - Saturation):**
+```json
+{
+  "success": false,
+  "error": "saturation_risk",
+  "error_code": "MOISTURE_TOO_HIGH",
+  "message": "Zone 1 soil moisture is 87.5% (threshold: 85%). Irrigation blocked to prevent saturation.",
+  "zone_id": 1
+}
+```
+
+#### Create Irrigation Schedule
+```bash
+POST /api/irrigation/schedule
+Content-Type: application/json
+
+{
+  "zone_id": 2,
+  "duration_minutes": 20,
+  "schedule_time": "2025-12-07T06:00:00Z",
+  "repeat_pattern": "daily",
+  "user_id": "scheduler_01"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "schedule_id": 1,
+  "message": "Schedule created for zone 2",
+  "schedule": {
+    "id": 1,
+    "zone_id": 2,
+    "zone_name": "Orchard B",
+    "schedule_time": "2025-12-07T06:00:00Z",
+    "duration_minutes": 20,
+    "repeat_pattern": "daily",
+    "is_active": true
+  }
+}
+```
+
+#### Get All Zones Status
+```bash
+GET /api/irrigation/status
+```
+
+**Response:**
+```json
+{
+  "zones": [
+    {
+      "zone_id": 1,
+      "zone_name": "Orchard A",
+      "zone_type": "orchard",
+      "is_active": true,
+      "current_duration_minutes": 5,
+      "remaining_minutes": 25,
+      "started_at": "2025-12-06T10:00:00Z",
+      "moisture_level": 45.2,
+      "daily_irrigation_minutes": 35
+    },
+    {
+      "zone_id": 2,
+      "zone_name": "Orchard B",
+      "is_active": false,
+      "moisture_level": 62.1,
+      "daily_irrigation_minutes": 0
+    }
+    // ... zones 3, 4, 5
+  ],
+  "active_count": 1,
+  "timestamp": "2025-12-06T10:05:00Z"
+}
+```
+
+#### Get Irrigation History
+```bash
+# All events
+GET /api/irrigation/history?page=1&page_size=20
+
+# Filter by zone
+GET /api/irrigation/history?zone_id=1
+```
+
+**Response:**
+```json
+{
+  "events": [
+    {
+      "id": 1,
+      "zone_id": 1,
+      "zone_name": "Orchard A",
+      "start_time": "2025-12-06T10:00:00Z",
+      "end_time": "2025-12-06T10:30:00Z",
+      "duration_minutes": 30,
+      "actual_duration_minutes": 30,
+      "trigger_type": "manual",
+      "user_id": "technician_01",
+      "status": "completed"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 20
+}
+```
+
+#### Update/Cancel Schedule
+```bash
+PUT /api/irrigation/schedule/1
+Content-Type: application/json
+
+{
+  "is_active": false  # Cancel schedule
+}
+```
+
+#### Emergency Stop All Zones
+```bash
+POST /api/irrigation/stop_all?user_id=emergency_operator
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "stopped_zones": [1, 3],
+  "failed_zones": [],
+  "mqtt_published": true,
+  "message": "Emergency stop executed. Stopped 2 zones."
+}
+```
+
+#### Stop Specific Zone
+```bash
+POST /api/irrigation/stop/1?user_id=technician_01
+```
+
+### MQTT Integration
+
+When irrigation is triggered, the API publishes commands to the MQTT broker:
+
+**Topic Pattern:** `irrigation/control/{zone_id}`
+
+**Start Command:**
+```json
+{
+  "action": "start",
+  "duration": 30
+}
+```
+
+**Stop Command:**
+```json
+{
+  "action": "stop"
+}
+```
+
+**Example:**
+- Trigger irrigation for zone 1 → Publishes to `irrigation/control/1`
+- IoT devices subscribed to this topic receive the command
+- Physical valves are controlled by IoT devices (not directly by API)
+
+### Testing Irrigation Endpoints
+
+**Postman Collection:**
+```bash
+# Import the collection
+Smart_Irrigation_Control.postman_collection.json
+```
+
+**Swagger UI:**
+```
+http://localhost:8000/docs
+# Navigate to "irrigation" section
+```
+
+**curl Examples:**
+```bash
+# Trigger irrigation
+curl -X POST http://localhost:8000/api/irrigation/manual \
+  -H "Content-Type: application/json" \
+  -d '{"zone_id": 1, "duration_minutes": 30, "trigger_type": "manual", "user_id": "tech_01"}'
+
+# Get status
+curl http://localhost:8000/api/irrigation/status
+
+# Emergency stop
+curl -X POST "http://localhost:8000/api/irrigation/stop_all?user_id=emergency"
+```
+
 
 
 ## Configuration

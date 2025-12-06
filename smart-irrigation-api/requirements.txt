@@ -18,6 +18,9 @@ influxdb-client==1.45.0
 # WebSocket support (FastAPI has built-in support via Starlette)
 websockets>=12.0
 
+# MQTT client for subscribing to sensor updates
+paho-mqtt>=2.0.0
+
 # Testing dependencies
 pytest==8.3.4
 httpx==0.28.1

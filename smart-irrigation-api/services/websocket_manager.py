@@ -3,10 +3,12 @@
 import asyncio
 import json
 import logging
+import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from fastapi import WebSocket, WebSocketDisconnect
 
+from config import settings
 from models.websocket import HeartbeatMessage, SensorUpdateMessage
 
 # Configure logging
@@ -28,6 +30,12 @@ class ConnectionManager:
         # Heartbeat task
         self.heartbeat_task: Optional[asyncio.Task] = None
         self.heartbeat_interval: int = 30  # seconds
+        
+        # Rate limiting: track last broadcast time per sensor
+        self._last_broadcast_time: Dict[str, float] = {}
+        self._pending_updates: Dict[str, Dict[str, Any]] = {}
+        self._rate_limit_seconds: float = settings.WS_RATE_LIMIT_SECONDS
+
         
     async def connect(self, websocket: WebSocket, sensor_id: Optional[str] = None):
         """
@@ -170,6 +178,73 @@ class ConnectionManager:
         await self.broadcast_to_sensor(sensor_id, message_dict)
         
         logger.info(f"Broadcasted update for sensor {sensor_id}: {value}")
+    
+    async def broadcast_live_sensor_data(self, data: Dict[str, Any]) -> bool:
+        """
+        Broadcast live sensor data with rate limiting (max 1 update/second/sensor).
+        
+        This method implements B2.2 requirement for rate-limited broadcasts.
+        
+        Args:
+            data: Sensor data dictionary with format:
+                  {"sensor_id": "V1", "moisture": 45.2, "temperature": 22.1, "timestamp": "..."}
+        
+        Returns:
+            True if broadcast was sent, False if rate-limited
+        """
+        sensor_id = data.get('sensor_id')
+        if not sensor_id:
+            logger.warning("Received sensor data without sensor_id")
+            return False
+        
+        current_time = time.time()
+        last_time = self._last_broadcast_time.get(sensor_id, 0)
+        
+        # Check rate limit
+        if current_time - last_time < self._rate_limit_seconds:
+            # Store as pending update (latest value will be used)
+            self._pending_updates[sensor_id] = data
+            logger.debug(f"Rate-limited update for sensor {sensor_id}, queued for later")
+            return False
+        
+        # Broadcast immediately
+        self._last_broadcast_time[sensor_id] = current_time
+        
+        # Clear any pending update for this sensor
+        if sensor_id in self._pending_updates:
+            del self._pending_updates[sensor_id]
+        
+        # Broadcast to global stream
+        await self.broadcast(data)
+        
+        # Broadcast to specific sensor subscribers
+        await self.broadcast_to_sensor(sensor_id, data)
+        
+        logger.info(f"Live broadcast for sensor {sensor_id}")
+        return True
+    
+    async def flush_pending_updates(self):
+        """
+        Flush any pending rate-limited updates.
+        
+        Call this periodically to ensure queued updates are eventually sent.
+        """
+        current_time = time.time()
+        sensors_to_flush = []
+        
+        for sensor_id, data in self._pending_updates.items():
+            last_time = self._last_broadcast_time.get(sensor_id, 0)
+            if current_time - last_time >= self._rate_limit_seconds:
+                sensors_to_flush.append((sensor_id, data))
+        
+        for sensor_id, data in sensors_to_flush:
+            self._last_broadcast_time[sensor_id] = current_time
+            del self._pending_updates[sensor_id]
+            
+            await self.broadcast(data)
+            await self.broadcast_to_sensor(sensor_id, data)
+            logger.debug(f"Flushed pending update for sensor {sensor_id}")
+
     
     async def start_heartbeat(self):
         """Start periodic heartbeat to keep connections alive."""
