@@ -3,17 +3,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
-from routes import auth
+from routes import auth, sensors
 
 
 # Create FastAPI app instance
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
+    description="Smart Irrigation System API with sensor monitoring and irrigation control"
 )
-
-from routes import auth
-app.include_router(auth.router)
 
 # Configure CORS
 app.add_middleware(
@@ -26,6 +24,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(sensors.router)
 
 
 @app.get("/")

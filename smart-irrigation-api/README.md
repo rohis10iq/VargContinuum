@@ -83,7 +83,7 @@ Once the server is running, you can access:
 - `GET /` - Root endpoint, returns welcome message.
 - `GET /health` - Health check endpoint.
 
-### Authentication Endpoints
+### Authentication Endpoints (Task C1.x)
 
 #### Register a New User
 ```bash
@@ -147,19 +147,41 @@ The application can be configured via `config.py` or environment variables:
 - `ALGORITHM`: JWT algorithm (default: HS256)
 - `ACCESS_TOKEN_EXPIRE_HOURS`: Token expiration time in hours (default: 24)
 
+### InfluxDB Settings (Task B2.1)
+- `INFLUXDB_URL`: InfluxDB server URL (default: http://localhost:8086)
+- `INFLUXDB_TOKEN`: InfluxDB authentication token
+- `INFLUXDB_ORG`: InfluxDB organization name (default: smart-irrigation)
+- `INFLUXDB_BUCKET`: InfluxDB bucket for sensor data (default: sensor-data)
+
+### Cache Settings
+- `CACHE_TTL_SECONDS`: Cache time-to-live for summary endpoint (default: 300)
+
 ## Dependencies
 
+### Core Framework
 - **fastapi**: Modern web framework for building APIs
 - **uvicorn**: ASGI server for running FastAPI
-- **python-jose**: JWT token handling
-- **passlib**: Password hashing utilities with bcrypt
-- **python-multipart**: Multipart form data support
 - **pydantic**: Data validation using Python type annotations
 - **pydantic-settings**: Settings management
 - **python-dotenv**: Environment variable management
+
+### Authentication (Task C1.x)
+- **python-jose**: JWT token handling
+- **passlib**: Password hashing utilities with bcrypt
+- **python-multipart**: Multipart form data support
 - **email-validator**: Email validation for Pydantic
+
+### Database
 - **sqlalchemy**: SQL toolkit and ORM
 - **psycopg2-binary**: PostgreSQL database adapter
+- **influxdb-client**: InfluxDB client for time-series sensor data (Task B2.1)
+
+### Caching & Performance
+- **cachetools**: In-memory caching with TTL support (Task B2.1)
+
+### Testing
+- **pytest**: Testing framework
+- **httpx**: HTTP client for testing
 
 ## Authentication Features
 
@@ -183,6 +205,64 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
+
+### Sensor Data Endpoints (Task B2.1) ✅ COMPLETED
+
+The Sensor Data API provides comprehensive access to IoT sensor data for the smart irrigation dashboard.
+
+#### Endpoints
+
+1. **`GET /api/sensors`** - List all sensors with status and metadata
+2. **`GET /api/sensors/{id}`** - Get detailed sensor information with latest reading
+3. **`GET /api/sensors/{id}/history`** - Get time-series historical data with aggregation
+4. **`GET /api/sensors/{id}/latest`** - Get the most recent sensor reading
+5. **`GET /api/sensors/summary`** - Get all sensors summary (cached, optimized for dashboard)
+
+#### Features
+
+- ⚡ **High Performance**: All endpoints respond in <500ms
+- 📊 **Time-Series Data**: Historical queries with flexible aggregation (15m, 1h, 6h, 1d)
+- 🗄️ **Caching**: 5-minute cache for high-traffic summary endpoint
+- 📡 **Real-time Status**: Sensor status monitoring (active/inactive/error)
+- 🌐 **ISO8601 Timestamps**: Standard timestamp format for all responses
+- 📈 **Chart-Ready Data**: Responses optimized for Recharts library
+
+#### Quick Examples
+
+```bash
+# List all sensors
+curl http://localhost:8000/api/sensors
+
+# Get sensor V1 details
+curl http://localhost:8000/api/sensors/V1
+
+# Get 24-hour history with 1-hour intervals
+curl "http://localhost:8000/api/sensors/V1/history?interval=1h"
+
+# Get latest reading
+curl http://localhost:8000/api/sensors/V1/latest
+
+# Get dashboard summary (cached)
+curl http://localhost:8000/api/sensors/summary
+```
+
+#### Sensor-Zone Mapping
+
+| Sensor ID | Zone | Description |
+|-----------|------|-------------|
+| V1 | Zone 1 | Orchard Zone 1 |
+| V2 | Zone 2 | Orchard Zone 2 |
+| V3 | Zone 3 | Orchard Zone 3 |
+| V4 | Zone 4 | Orchard Zone 4 |
+| V5 | Zone 5 | Potato Field |
+
+#### Documentation
+
+See **`Deliverables/TaskR B2.1/`** for complete documentation:
+- `IMPLEMENTATION_DOCUMENTATION.md` - Full implementation details
+- `API_SPECIFICATION.md` - Complete API reference
+- `TESTING_GUIDE.md` - Testing instructions and results
+- `Sensor_Data_API.postman_collection.json` - Postman collection
 
 ## Security Features
 

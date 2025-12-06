@@ -33,6 +33,15 @@ class Settings:
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here-change-in-production")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_HOURS: int = 24
+    
+    # InfluxDB settings for sensor data
+    INFLUXDB_URL: str = os.getenv("INFLUXDB_URL", "http://localhost:8086")
+    INFLUXDB_TOKEN: str = os.getenv("INFLUXDB_TOKEN", "your-influxdb-token")
+    INFLUXDB_ORG: str = os.getenv("INFLUXDB_ORG", "smart-irrigation")
+    INFLUXDB_BUCKET: str = os.getenv("INFLUXDB_BUCKET", "sensor-data")
+    
+    # Cache settings
+    CACHE_TTL_SECONDS: int = 300  # 5 minutes cache for summary endpoint
 
 
 settings = Settings()

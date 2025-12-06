@@ -1,0 +1,386 @@
+{
+	"info": {
+		"_postman_id": "b21-sensor-api-2025",
+		"name": "Smart Irrigation - Sensor Data API (Task B2.1)",
+		"description": "Complete API collection for Task B2.1: Sensor Data API Endpoints\n\nThis collection includes all 5 required endpoints:\n1. GET /api/sensors - List all sensors\n2. GET /api/sensors/{id} - Single sensor details\n3. GET /api/sensors/{id}/history - Time-series data\n4. GET /api/sensors/{id}/latest - Most recent reading\n5. GET /api/sensors/summary - All sensors latest readings (cached)\n\nBase URL: http://localhost:8000",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Sensor Endpoints",
+			"item": [
+				{
+					"name": "List All Sensors",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors"
+							]
+						},
+						"description": "Get a list of all sensors with their basic information including:\n- Sensor ID and name\n- Zone mapping\n- Current status (active/inactive/error)\n- Last seen timestamp"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sensor Details - V1",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors/V1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors",
+								"V1"
+							]
+						},
+						"description": "Get detailed information about Orchard Zone 1 sensor including latest reading"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sensor Details - V2",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors/V2",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors",
+								"V2"
+							]
+						},
+						"description": "Get detailed information about Orchard Zone 2 sensor"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sensor Details - V5 (Potato)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors/V5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors",
+								"V5"
+							]
+						},
+						"description": "Get detailed information about Potato Field sensor"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Latest Reading - V1",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors/V1/latest",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors",
+								"V1",
+								"latest"
+							]
+						},
+						"description": "Get the most recent reading from sensor V1 with all measurements:\n- Soil moisture (%)\n- Temperature (°C)\n- Humidity (%)\n- Light intensity (0-1023)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Latest Reading - V5",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors/V5/latest",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors",
+								"V5",
+								"latest"
+							]
+						},
+						"description": "Get the most recent reading from potato field sensor"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Historical Data",
+			"item": [
+				{
+					"name": "Get History - Last 24 Hours (Default)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors/V1/history",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors",
+								"V1",
+								"history"
+							]
+						},
+						"description": "Get sensor history for the last 24 hours with default 1-hour aggregation"
+					},
+					"response": []
+				},
+				{
+					"name": "Get History - Last 7 Days",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors/V1/history?start_time={{seven_days_ago}}&end_time={{now}}&interval=6h",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors",
+								"V1",
+								"history"
+							],
+							"query": [
+								{
+									"key": "start_time",
+									"value": "{{seven_days_ago}}",
+									"description": "ISO8601 timestamp - 7 days ago"
+								},
+								{
+									"key": "end_time",
+									"value": "{{now}}",
+									"description": "ISO8601 timestamp - current time"
+								},
+								{
+									"key": "interval",
+									"value": "6h",
+									"description": "6-hour aggregation intervals"
+								}
+							]
+						},
+						"description": "Get 7 days of sensor history with 6-hour aggregation intervals"
+					},
+					"response": []
+				},
+				{
+					"name": "Get History - Last 30 Days",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors/V2/history?start_time={{thirty_days_ago}}&end_time={{now}}&interval=1d",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors",
+								"V2",
+								"history"
+							],
+							"query": [
+								{
+									"key": "start_time",
+									"value": "{{thirty_days_ago}}",
+									"description": "30 days ago"
+								},
+								{
+									"key": "end_time",
+									"value": "{{now}}",
+									"description": "Current time"
+								},
+								{
+									"key": "interval",
+									"value": "1d",
+									"description": "Daily aggregation"
+								}
+							]
+						},
+						"description": "Get 30 days of sensor history with daily aggregation"
+					},
+					"response": []
+				},
+				{
+					"name": "Get History - 15 Minute Intervals",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors/V3/history?interval=15m",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors",
+								"V3",
+								"history"
+							],
+							"query": [
+								{
+									"key": "interval",
+									"value": "15m",
+									"description": "15-minute aggregation for detailed analysis"
+								}
+							]
+						},
+						"description": "Get recent history with fine-grained 15-minute intervals"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Dashboard Summary (Cached)",
+			"item": [
+				{
+					"name": "Get All Sensors Summary",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors/summary",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors",
+								"summary"
+							]
+						},
+						"description": "Get summary of all sensors with their latest readings.\n\nThis is the HIGH-TRAFFIC endpoint used by the dashboard grid view.\n- Results are cached for 5 minutes\n- Response includes cache status and timestamp\n- Optimized for performance (<500ms response time)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Summary - Check Cache",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors/summary",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors",
+								"summary"
+							]
+						},
+						"description": "Call this immediately after the first summary request to verify caching is working. The 'cached' field should be true."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Error Cases",
+			"item": [
+				{
+					"name": "Invalid Sensor ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors/INVALID",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors",
+								"INVALID"
+							]
+						},
+						"description": "Test error handling for non-existent sensor. Should return 404."
+					},
+					"response": []
+				},
+				{
+					"name": "Invalid Interval",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/sensors/V1/history?interval=5m",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"sensors",
+								"V1",
+								"history"
+							],
+							"query": [
+								{
+									"key": "interval",
+									"value": "5m",
+									"description": "Invalid interval (only 15m, 1h, 6h, 1d allowed)"
+								}
+							]
+						},
+						"description": "Test validation error for unsupported interval. Should return 422."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "now",
+			"value": "2025-12-06T14:00:00Z",
+			"type": "string"
+		},
+		{
+			"key": "seven_days_ago",
+			"value": "2025-11-29T14:00:00Z",
+			"type": "string"
+		},
+		{
+			"key": "thirty_days_ago",
+			"value": "2025-11-06T14:00:00Z",
+			"type": "string"
+		}
+	]
+}
