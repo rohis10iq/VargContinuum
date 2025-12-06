@@ -1,0 +1,389 @@
+{
+  "info": {
+    "name": "WebSocket Real-Time Sensors - Task B2.2",
+    "version": "1.0.0",
+    "description": "Real-time sensor data streaming via WebSocket. Includes authentication, connection tests, and message format examples.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login to Get JWT Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"jwt_token\", jsonData.access_token);",
+                  "    console.log(\"JWT token saved: \" + jsonData.access_token.substring(0, 20) + \"...\");",
+                  "    pm.test(\"Login successful\", function () {",
+                  "        pm.expect(pm.response.code).to.equal(200);",
+                  "        pm.expect(jsonData.access_token).to.be.a('string');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"test_user\",\n  \"password\": \"test_pass\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. WebSocket Connection",
+      "description": "WebSocket endpoints for real-time sensor streaming",
+      "item": [
+        {
+          "name": "Connect WebSocket - Authenticated",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ws_url}}/ws/sensors?token={{jwt_token}}",
+              "host": [
+                "{{ws_url}}"
+              ],
+              "path": [
+                "ws",
+                "sensors"
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}"
+                }
+              ]
+            },
+            "description": "Connect to real-time sensor stream with JWT authentication.\n\nMessage types received:\n1. Connection Status (on connect)\n2. Sensor Readings (when MQTT data arrives)\n3. Error messages (if any)"
+          }
+        },
+        {
+          "name": "Connect WebSocket - Without Token (Should Fail)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ws_url}}/ws/sensors",
+              "host": [
+                "{{ws_url}}"
+              ],
+              "path": [
+                "ws",
+                "sensors"
+              ]
+            },
+            "description": "Attempt to connect without token - should receive 401 Unauthorized"
+          }
+        },
+        {
+          "name": "Connect WebSocket - Invalid Token (Should Fail)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ws_url}}/ws/sensors?token=invalid_token_12345",
+              "host": [
+                "{{ws_url}}"
+              ],
+              "path": [
+                "ws",
+                "sensors"
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "invalid_token_12345"
+                }
+              ]
+            },
+            "description": "Attempt to connect with invalid token - should close with policy violation error"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Message Format Examples",
+      "description": "Example messages received from WebSocket",
+      "item": [
+        {
+          "name": "Example: Connection Status Message",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://httpbin.org/json",
+              "protocol": "http",
+              "host": [
+                "httpbin.org"
+              ],
+              "path": [
+                "json"
+              ]
+            },
+            "description": "Example of connection status message received immediately after connecting:\n\n```json\n{\n  \"type\": \"connection_status\",\n  \"data\": {\n    \"status\": \"connected\",\n    \"client_id\": \"abc123de\",\n    \"active_clients\": 5\n  },\n  \"timestamp\": \"2025-12-06T14:30:00Z\"\n}\n```\n\nFields:\n- **type**: Always \"connection_status\"\n- **data.status**: \"connected\" on successful connection\n- **data.client_id**: Unique identifier for this client\n- **data.active_clients**: Number of active connections on server\n- **timestamp**: ISO8601 UTC timestamp"
+          }
+        },
+        {
+          "name": "Example: Sensor Reading Message",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://httpbin.org/json",
+              "protocol": "http",
+              "host": [
+                "httpbin.org"
+              ],
+              "path": [
+                "json"
+              ]
+            },
+            "description": "Example of sensor reading message received when MQTT data arrives:\n\n```json\n{\n  \"type\": \"sensor_reading\",\n  \"data\": {\n    \"sensor_id\": \"V1\",\n    \"moisture\": 45.2,\n    \"temperature\": 22.1,\n    \"humidity\": 65.5,\n    \"light\": 800.0\n  },\n  \"timestamp\": \"2025-12-06T14:30:15Z\"\n}\n```\n\nFields:\n- **type**: Always \"sensor_reading\"\n- **data.sensor_id**: One of V1, V2, V3, V4, V5\n- **data.moisture**: Soil moisture percentage (0-100)\n- **data.temperature**: Temperature in Celsius\n- **data.humidity**: Relative humidity percentage (0-100)\n- **data.light**: Light intensity in lux\n- **timestamp**: ISO8601 UTC timestamp when reading was taken\n\nNote: All measurement fields are optional and may be null"
+          }
+        },
+        {
+          "name": "Example: Error Message",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://httpbin.org/json",
+              "protocol": "http",
+              "host": [
+                "httpbin.org"
+              ],
+              "path": [
+                "json"
+              ]
+            },
+            "description": "Example of error message:\n\n```json\n{\n  \"type\": \"error\",\n  \"error\": \"Connection failed\",\n  \"code\": \"CONN_ERROR\",\n  \"timestamp\": \"2025-12-06T14:30:30Z\"\n}\n```\n\nError codes:\n- **AUTH_ERROR**: Authentication failed\n- **CONN_ERROR**: Connection error\n- **WS_ERROR**: General WebSocket error"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Related REST Endpoints",
+      "description": "REST endpoints that complement the WebSocket stream",
+      "item": [
+        {
+          "name": "Get All Sensors (REST Fallback)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/sensors",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "sensors"
+              ]
+            },
+            "description": "Get all sensors via REST (useful fallback if WebSocket unavailable)"
+          }
+        },
+        {
+          "name": "Get Single Sensor Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/sensors/V1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "sensors",
+                "V1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Sensor History",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/sensors/V1/history?interval=1h",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "sensors",
+                "V1",
+                "history"
+              ],
+              "query": [
+                {
+                  "key": "interval",
+                  "value": "1h"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Sensors Summary (Cached)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/sensors/summary",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "sensors",
+                "summary"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Documentation",
+      "item": [
+        {
+          "name": "WebSocket Endpoint Documentation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/docs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "docs"
+              ]
+            },
+            "description": "Interactive API documentation (Swagger/OpenAPI)"
+          }
+        },
+        {
+          "name": "View README",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "file:///home/rayyan/Desktop/VargContinuum/smart-irrigation-api/Deliverables/TaskR%20B2.2/README.md",
+              "protocol": "file",
+              "host": [
+                "home"
+              ],
+              "path": [
+                "rayyan",
+                "Desktop",
+                "VargContinuum",
+                "smart-irrigation-api",
+                "Deliverables",
+                "TaskR B2.2",
+                "README.md"
+              ]
+            },
+            "description": "Complete Task B2.2 documentation"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "ws_url",
+      "value": "localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
