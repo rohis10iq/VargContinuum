@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
-from routes import auth, sensors
+from routes import auth, sensors, websocket
 
 
 # Create FastAPI app instance
@@ -25,6 +25,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(sensors.router)
+app.include_router(websocket.router)
 
 
 @app.get("/")

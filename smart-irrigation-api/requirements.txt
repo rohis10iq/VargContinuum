@@ -18,6 +18,12 @@ influxdb-client==1.38.0
 # Caching
 cachetools==5.3.2
 
+# MQTT for real-time sensor data
+paho-mqtt==1.6.1
+
+# WebSocket support
+websockets==12.0
+
 # Testing dependencies
 pytest==8.3.4
 httpx==0.28.1
