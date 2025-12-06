@@ -1,7 +1,6 @@
 """WebSocket connection manager for handling concurrent clients."""
 from typing import Dict, Set
 from datetime import datetime, timedelta
-import json
 from fastapi import WebSocket
 import logging
 
