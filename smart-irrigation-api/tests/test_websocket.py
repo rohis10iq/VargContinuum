@@ -1,6 +1,5 @@
 """Comprehensive tests for WebSocket real-time sensor streaming."""
 import pytest
-import json
 from datetime import datetime
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock, AsyncMock
