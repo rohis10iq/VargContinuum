@@ -1,9 +1,6 @@
 """WebSocket message models and schemas."""
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime
-
-
 class SensorReadingMessage(BaseModel):
     """Real-time sensor reading broadcast via WebSocket."""
     
