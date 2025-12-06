@@ -277,9 +277,9 @@ class TestWebSocketIntegration:
     def test_websocket_timestamp_format(self):
         """Test that WebSocket messages use ISO8601 timestamps."""
         from models.websocket import WebSocketMessage, SensorReadingMessage
-        from datetime import datetime
+        from datetime import datetime, timezone
         
-        timestamp = datetime.utcnow().isoformat() + "Z"
+        timestamp = datetime.now(timezone.utc).isoformat() + "Z"
         reading = SensorReadingMessage(
             sensor_id="V1",
             moisture=45.2,
