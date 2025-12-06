@@ -1,5 +1,4 @@
 """WebSocket connection manager for handling concurrent clients."""
-import asyncio
 from typing import Dict, Set
 from datetime import datetime, timedelta
 import json
