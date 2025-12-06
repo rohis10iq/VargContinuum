@@ -2,7 +2,7 @@
 import pytest
 from datetime import datetime
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import MagicMock, AsyncMock
 
 from main import app
 from utils.websocket_manager import ws_manager, WebSocketManager
