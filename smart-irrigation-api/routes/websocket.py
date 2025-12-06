@@ -97,7 +97,8 @@ async def websocket_sensor_endpoint(
             )
             await ws_manager.broadcast(message.model_dump(), sensor_id)
         except Exception as e:
-            logger.error(f"Error broadcasting to WebSocket clients: {e}")
+            logger.error("Error broadcasting to WebSocket clients.")
+            logger.debug("Broadcasting exception details:", exc_info=True)
     
     # Set the broadcast callback
     mqtt.set_broadcast_callback(broadcast_to_websocket)
