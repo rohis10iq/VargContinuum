@@ -44,6 +44,15 @@ class Settings:
     INFLUXDB_TOKEN: str = os.getenv("INFLUXDB_TOKEN", "")
     INFLUXDB_ORG: str = os.getenv("INFLUXDB_ORG", "smart-irrigation")
     INFLUXDB_BUCKET: str = os.getenv("INFLUXDB_BUCKET", "sensor-data")
+    
+    # MQTT settings for sensor data subscription
+    MQTT_BROKER_HOST: str = os.getenv("MQTT_BROKER_HOST", "localhost")
+    MQTT_BROKER_PORT: int = int(os.getenv("MQTT_BROKER_PORT", "1883"))
+    MQTT_TOPIC_PREFIX: str = os.getenv("MQTT_TOPIC_PREFIX", "sensors/#")
+    MQTT_CLIENT_ID: str = os.getenv("MQTT_CLIENT_ID", "smart-irrigation-api")
+    
+    # WebSocket settings
+    WS_RATE_LIMIT_SECONDS: float = float(os.getenv("WS_RATE_LIMIT_SECONDS", "1.0"))
 
 
 settings = Settings()
